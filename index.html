@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Daily Activity Attendace - NBS Student</title>
+    <!-- Tailwind CSS untuk styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome untuk ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Menyembunyikan scrollbar untuk tampilan yang lebih bersih */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+    </style>
+</head>
+<body class="bg-gray-50 h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm z-10 sticky top-0">
+        <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex flex-col">
+                <h1 class="text-lg font-bold text-gray-800 leading-tight">Daily Activity Attendace</h1>
+                <span class="text-xs text-gray-500 font-medium tracking-wide">NBS Student</span>
+            </div>
+            <!-- Tombol Admin (Mengarah ke admin.html) -->
+            <a href="admin.html" class="bg-blue-600 hover:bg-blue-700 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-colors">
+                <i class="fas fa-user-shield"></i>
+            </a>
+        </div>
+    </header>
+
+    <!-- Konten Utama -->
+    <main class="flex-1 overflow-y-auto max-w-md mx-auto w-full p-4">
+        
+        <!-- Tanggal Hari Ini -->
+        <div class="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4 flex items-center justify-between">
+            <span class="text-blue-800 text-sm font-semibold"><i class="far fa-calendar-alt mr-2"></i>Hari Ini</span>
+            <span id="currentDate" class="text-blue-900 font-bold text-sm">Loading...</span>
+        </div>
+
+        <!-- Pilihan Kegiatan -->
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Kegiatan</label>
+            <select id="activitySelect" class="w-full p-3 border border-gray-300 rounded-lg bg-white shadow-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium">
+                <option value="">-- Pilih Kegiatan --</option>
+            </select>
+        </div>
+
+        <!-- Tabel Daftar Hadir -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+            <!-- Header Tabel -->
+            <div class="grid grid-cols-12 gap-1 bg-gray-100 p-2 text-xs font-semibold text-gray-600 border-b border-gray-200">
+                <div class="col-span-2 text-center">NIS</div>
+                <div class="col-span-4">Nama Murid</div>
+                <div class="col-span-2 text-center">Presensi</div>
+                <div class="col-span-4 text-center">Ket.</div>
+            </div>
+            
+            <!-- Body Tabel -->
+            <div id="studentList" class="divide-y divide-gray-100">
+                <div class="p-4 text-center text-gray-500 text-sm">Memuat data murid...</div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        // 1. Konfigurasi Firebase (Sesuai permintaan Anda)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDQKoko-TUh86oZl-T84blF2R937NnZ68Q",
+            authDomain: "quiz-b09cb.firebaseapp.com",
+            projectId: "quiz-b09cb",
+            storageBucket: "quiz-b09cb.firebasestorage.app",
+            messagingSenderId: "891983424435",
+            appId: "1:891983424435:web:25943b3c2831a45b4ff9c6"
+        };
+
+        // Inisialisasi Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // 2. Aktifkan Offline Persistence (Penyimpanan Sementara di Browser)
+        // Ini memastikan aplikasi tetap bisa digunakan saat tidak ada internet.
+        db.enablePersistence().catch((err) => {
+            if (err.code == 'failed-precondition') {
+                console.log("Persistence gagal: Banyak tab terbuka.");
+            } else if (err.code == 'unimplemented') {
+                console.log("Browser tidak mendukung persistence.");
+            }
+        });
+
+        // 3. Variabel Global
+        const today = new Date().toLocaleDateString('en-CA'); // Format YYYY-MM-DD
+        document.getElementById('currentDate').innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        
+        let currentActivityId = null;
+        let studentsData = [];
+        let attendanceRecords = {};
+
+        // 4. Ambil Data Kegiatan dari Firestore
+        db.collection('activities').orderBy('name').onSnapshot(snapshot => {
+            const select = document.getElementById('activitySelect');
+            select.innerHTML = '<option value="">-- Pilih Kegiatan --</option>';
+            snapshot.forEach(doc => {
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = doc.data().name;
+                select.appendChild(option);
+            });
+        });
+
+        // 5. Ambil Data Murid yang Statusnya "Aktif"
+        db.collection('students').where('status', '==', 'Aktif').orderBy('nis').onSnapshot(snapshot => {
+            studentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderStudentList();
+        });
+
+        // 6. Fungsi Render Daftar Murid ke Tabel
+        function renderStudentList() {
+            const container = document.getElementById('studentList');
+            
+            if (!currentActivityId) {
+                container.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">Silakan pilih kegiatan terlebih dahulu.</div>';
+                return;
+            }
+
+            if (studentsData.length === 0) {
+                container.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">Belum ada data murid aktif.</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            
+            studentsData.forEach(student => {
+                // Ambil data presensi jika ada, jika tidak default kosong
+                const record = attendanceRecords[student.nis] || { present: false, note: '' };
+                
+                const row = document.createElement('div');
+                row.className = 'grid grid-cols-12 gap-1 p-2 items-center hover:bg-gray-50 transition-colors';
+                
+                // Logika Keterangan: "tidak aktif jika tidak ceklis"
+                // Jika dicentang (Hadir), Ket menjadi aktif. Jika tidak dicentang, Ket nonaktif.
+                // Catatan: Jika ini terbalik dengan maksud Anda, cukup ubah logika di bawah ini.
+                const isKetDisabled = !record.present; 
+
+                row.innerHTML = `
+                    <div class="col-span-2 text-center text-xs font-semibold text-gray-500">${student.nis}</div>
+                    <div class="col-span-4 text-sm font-medium text-gray-800 truncate pr-1">${student.nama}</div>
+                    <div class="col-span-2 flex justify-center">
+                        <input type="checkbox" 
+                            class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                            ${record.present ? 'checked' : ''}
+                            onchange="togglePresence('${student.nis}', this.checked)">
+                    </div>
+                    <div class="col-span-4 flex justify-center">
+                        <select class="w-full text-xs border border-gray-300 rounded p-1 focus:outline-none focus:border-blue-500 ${isKetDisabled ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-700'}"
+                            ${isKetDisabled ? 'disabled' : ''}
+                            onchange="updateNote('${student.nis}', this.value)">
+                            <option value="">-</option>
+                            <option value="S" ${record.note === 'S' ? 'selected' : ''}>S (Sakit)</option>
+                            <option value="I" ${record.note === 'I' ? 'selected' : ''}>I (Izin)</option>
+                            <option value="A" ${record.note === 'A' ? 'selected' : ''}>A (Alpa)</option>
+                        </select>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        // 7. Event Handler saat Dropdown Kegiatan Berubah
+        document.getElementById('activitySelect').addEventListener('change', function(e) {
+            currentActivityId = e.target.value;
+            if (currentActivityId) {
+                listenToAttendance();
+            } else {
+                attendanceRecords = {};
+                renderStudentList();
+            }
+        });
+
+        // 8. Mendengarkan Perubahan Data Presensi di Firebase
+        function listenToAttendance() {
+            if (!currentActivityId) return;
+            
+            const docId = `${today}_${currentActivityId}`;
+            db.collection('attendance').doc(docId).onSnapshot(doc => {
+                if (doc.exists) {
+                    attendanceRecords = doc.data().records || {};
+                } else {
+                    attendanceRecords = {};
+                }
+                renderStudentList();
+            });
+        }
+
+        // 9. Fungsi Toggle Presensi (Ceklis)
+        function togglePresence(nis, isChecked) {
+            if (!currentActivityId) return;
+
+            // Update state lokal
+            if (!attendanceRecords[nis]) attendanceRecords[nis] = {};
+            attendanceRecords[nis].present = isChecked;
+            
+            // Jika tidak hadir, kosongkan keterangan (opsional)
+            if (!isChecked) {
+                attendanceRecords[nis].note = '';
+            }
+
+            // Simpan ke Firebase (Menggunakan dot notation agar tidak menimpa data murid lain)
+            const docId = `${today}_${currentActivityId}`;
+            const updateData = {};
+            updateData[`records.${nis}.present`] = isChecked;
+            updateData[`records.${nis}.note`] = attendanceRecords[nis].note;
+            updateData[`records.${nis}.updatedAt`] = firebase.firestore.FieldValue.serverTimestamp();
+
+            db.collection('attendance').doc(docId).set(updateData, { merge: true })
+                .then(() => console.log(`Presensi ${nis} tersimpan`))
+                .catch(err => console.error("Gagal menyimpan: ", err));
+                
+            renderStudentList(); // Render ulang untuk update status dropdown Ket
+        }
+
+        // 10. Fungsi Update Keterangan (S, I, A)
+        function updateNote(nis, note) {
+            if (!currentActivityId) return;
+            if (!attendanceRecords[nis]) attendanceRecords[nis] = { present: false };
+
+            attendanceRecords[nis].note = note;
+
+            const docId = `${today}_${currentActivityId}`;
+            const updateData = {};
+            updateData[`records.${nis}.note`] = note;
+            updateData[`records.${nis}.updatedAt`] = firebase.firestore.FieldValue.serverTimestamp();
+
+            db.collection('attendance').doc(docId).set(updateData, { merge: true })
+                .then(() => console.log(`Keterangan ${nis} tersimpan`))
+                .catch(err => console.error("Gagal menyimpan: ", err));
+        }
+    </script>
+</body>
+</html>
