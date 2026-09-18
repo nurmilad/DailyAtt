@@ -30,14 +30,19 @@
         }
         .edit-att-table thead th { background: #f3f4f6; }
         .sticky-nis { position: sticky; left: 0; z-index: 5; background: white !important; }
-        .sticky-nama { position: sticky; left: 48px; z-index: 5; background: white !important; }
+        .sticky-nama { position: sticky; left: 55px; z-index: 5; background: white !important; border-right: 2px solid #d1d5db !important; }
         .sticky-tot { position: sticky; right: 0; z-index: 5; background: white !important; border-left: 2px solid #d1d5db; }
         .sticky-header-nis { position: sticky; top: 0; left: 0; z-index: 20; background: #f3f4f6 !important; }
-        .sticky-header-nama { position: sticky; top: 0; left: 48px; z-index: 20; background: #f3f4f6 !important; }
+        .sticky-header-nama { position: sticky; top: 0; left: 55px; z-index: 20; background: #f3f4f6 !important; border-right: 2px solid #d1d5db !important; }
         .sticky-header-tot { position: sticky; top: 0; right: 0; z-index: 20; background: #f3f4f6 !important; border-left: 2px solid #d1d5db; }
         .sticky-header { position: sticky; top: 0; z-index: 10; background: #f3f4f6 !important; }
         .edit-cell { cursor: pointer; transition: background-color 0.15s; }
         .edit-cell:hover { background-color: #dbeafe !important; }
+        
+        /* Toast Notification */
+        #toast { transition: opacity 0.3s, transform 0.3s; }
+        #toast.show { opacity: 1; transform: translateY(0); }
+        #toast.hide { opacity: 0; transform: translateY(20px); pointer-events: none; }
     </style>
 </head>
 <body class="bg-gray-50 h-screen flex flex-col overflow-hidden">
@@ -203,7 +208,7 @@
                 </div>
 
                 <p class="text-xs text-gray-500 mb-2 italic">
-                    <i class="fas fa-info-circle mr-1"></i> Klik sel untuk mengubah status. Klik checkbox di header tanggal untuk centang semua (kecuali murid tidak aktif).
+                    <i class="fas fa-info-circle mr-1"></i> Klik sel untuk mengubah status. Klik checkbox di header tanggal untuk centang semua (kecuali murid tidak aktif). Geser tabel ke kanan untuk melihat tanggal.
                 </p>
 
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -211,8 +216,8 @@
                         <table id="editAttTable" class="edit-att-table w-full">
                             <thead>
                                 <tr id="editTableHeader">
-                                    <th class="sticky-header-nis text-xs" style="min-width:48px; width:48px;">NIS</th>
-                                    <th class="sticky-header-nama text-xs text-left" style="min-width:96px; width:96px;">NAMA</th>
+                                    <th class="sticky-header-nis text-xs" style="min-width:55px; width:55px;">NIS</th>
+                                    <th class="sticky-header-nama text-xs text-left" style="min-width:160px; width:160px;">NAMA</th>
                                     <th class="sticky-header text-xs">Pilih</th>
                                 </tr>
                             </thead>
@@ -285,6 +290,11 @@
         </div>
     </div>
 
+    <!-- Toast Notification -->
+    <div id="toast" class="hide fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg text-sm z-[60]">
+        Tersimpan ✓
+    </div>
+
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -303,10 +313,13 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // 2. Status Login
+        // 2. Status Login + Inisialisasi Dropdown Default
         window.onload = function() {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+
             // Isi dropdown tahun
-            const currentYear = new Date().getFullYear();
             const yearSelect = document.getElementById('editYearSelect');
             for (let y = currentYear - 2; y <= currentYear + 1; y++) {
                 const option = document.createElement('option');
@@ -316,12 +329,27 @@
                 yearSelect.appendChild(option);
             }
 
+            // ✅ PERBAIKAN: Set dropdown bulan ke bulan saat ini secara otomatis
+            document.getElementById('editMonthSelect').value = currentMonth;
+
             if (sessionStorage.getItem('isAdmin') === 'true') {
                 showDashboard();
             }
         };
 
-        // 3. Fungsi Login
+        // 3. Toast Notification
+        function showToast(msg = 'Tersimpan ✓') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.remove('hide');
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.classList.add('hide');
+            }, 1500);
+        }
+
+        // 4. Fungsi Login
         function login() {
             const inputPass = document.getElementById('adminPassword').value;
             const errorMsg = document.getElementById('loginError');
@@ -370,7 +398,7 @@
             listenActivitiesForEditAtt();
         }
 
-        // 4. Navigasi Tab
+        // 5. Navigasi Tab
         function switchTab(tabName) {
             document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.remove('tab-active'));
             document.querySelectorAll('[id^="content-"]').forEach(el => el.classList.add('hidden'));
@@ -807,8 +835,8 @@
         // ==========================================================
         // ============ TAB EDIT ATT (HISTORIS) =====================
         // ==========================================================
-        let editStudentsData = [];      // Semua murid (aktif & tidak aktif)
-        let editAttendanceData = {};     // { studentId: { day: {present, note} } }
+        let editStudentsData = [];
+        let editAttendanceData = {};
         let editCurrentActivityId = null;
         let editCurrentMonth = null;
         let editCurrentYear = null;
@@ -831,12 +859,14 @@
             editCurrentYear = year;
             editDaysInMonth = new Date(year, month, 0).getDate();
 
-            // Show loading
+            // Reset semua data sebelum load
+            editAttendanceData = {};
+
             document.getElementById('editTableHeader').innerHTML = '<th class="sticky-header-nis">NIS</th><th class="sticky-header-nama">NAMA</th><th class="sticky-header">Loading...</th>';
             document.getElementById('editTableBody').innerHTML = '<tr><td colspan="3" class="p-6 text-center text-gray-400 text-sm"><i class="fas fa-spinner fa-spin mr-2"></i>Memuat data...</td></tr>';
 
             try {
-                // 1. Ambil SEMUA murid (aktif dan tidak aktif)
+                // 1. Ambil SEMUA murid
                 const studentsSnap = await db.collection('students').get();
                 editStudentsData = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 editStudentsData.sort((a, b) => (a.nis || '').localeCompare(b.nis || '', undefined, { numeric: true, sensitivity: 'base' }));
@@ -845,8 +875,7 @@
                 const notesDoc = await db.collection('settings').doc('notes').get();
                 editNoteOptions = notesDoc.exists ? (notesDoc.data().list || []) : [];
 
-                // 3. Ambil semua data attendance untuk bulan ini (paralel)
-                editAttendanceData = {};
+                // 3. Ambil data attendance per hari (paralel)
                 const promises = [];
                 for (let d = 1; d <= editDaysInMonth; d++) {
                     const dayStr = String(d).padStart(2, '0');
@@ -883,8 +912,8 @@
             }
 
             // ===== Build Header =====
-            let headerHtml = `<th class="sticky-header-nis text-xs" style="min-width:48px; width:48px;">NIS</th>`;
-            headerHtml += `<th class="sticky-header-nama text-xs text-left" style="min-width:96px; width:96px;">NAMA</th>`;
+            let headerHtml = `<th class="sticky-header-nis text-xs" style="min-width:55px; width:55px;">NIS</th>`;
+            headerHtml += `<th class="sticky-header-nama text-xs text-left" style="min-width:160px; width:160px;">NAMA</th>`;
 
             const activeStudents = editStudentsData.filter(s => s.status === 'Aktif');
 
@@ -913,7 +942,8 @@
                 let total = 0;
                 bodyHtml += `<tr class="${rowBg}">`;
                 bodyHtml += `<td class="sticky-nis text-xs font-semibold ${textColor}">${s.nis || '-'}</td>`;
-                bodyHtml += `<td class="sticky-nama text-xs font-medium ${textColor} truncate" style="max-width:96px;">${s.nama || '-'}${isAktif ? '' : ' <span class="text-red-400 text-[9px]">(off)</span>'}</td>`;
+                // ✅ PERBAIKAN: Hapus 'truncate' agar nama panjang tampil penuh, dan perlebar kolom
+                bodyHtml += `<td class="sticky-nama text-xs font-medium ${textColor}" style="word-wrap:break-word; white-space:normal;">${s.nama || '-'}${isAktif ? '' : ' <span class="text-red-400 text-[9px]">(off)</span>'}</td>`;
 
                 for (let d = 1; d <= editDaysInMonth; d++) {
                     const rec = (editAttendanceData[s.id] && editAttendanceData[s.id][d]) || null;
@@ -943,10 +973,9 @@
             const dayStr = String(day).padStart(2, '0');
             const docId = `${editCurrentYear}-${editCurrentMonth}-${dayStr}_${editCurrentActivityId}`;
 
-            // Update memory + build update object
             const update = {};
             editStudentsData.forEach(s => {
-                if (s.status !== 'Aktif') return; // Skip murid tidak aktif
+                if (s.status !== 'Aktif') return;
                 
                 if (!editAttendanceData[s.id]) editAttendanceData[s.id] = {};
                 editAttendanceData[s.id][day] = { present: checked, note: '' };
@@ -959,8 +988,14 @@
             renderEditTable();
 
             db.collection('attendance').doc(docId).set(update, { merge: true })
-                .then(() => console.log(`Kolom tanggal ${day} tersimpan`))
-                .catch(err => console.error("Gagal menyimpan: ", err));
+                .then(() => {
+                    console.log(`Kolom tanggal ${day} tersimpan`);
+                    showToast(`Tgl ${day} tersimpan ✓`);
+                })
+                .catch(err => {
+                    console.error("Gagal menyimpan: ", err);
+                    showToast('Gagal menyimpan!');
+                });
         }
 
         function openCellEditor(td) {
@@ -1036,9 +1071,18 @@
             update[`records.${sid}.note`] = note;
             update[`records.${sid}.updatedAt`] = firebase.firestore.FieldValue.serverTimestamp();
 
+            // ✅ PERBAIKAN: Log detail untuk memverifikasi
+            console.log(`Saving to: attendance/${docId}`, update);
+
             db.collection('attendance').doc(docId).set(update, { merge: true })
-                .then(() => console.log(`Presensi ${sid} tgl ${day} tersimpan`))
-                .catch(err => console.error("Gagal menyimpan: ", err));
+                .then(() => {
+                    console.log(`✓ Presensi ${sid} tgl ${day} tersimpan`);
+                    showToast('Tersimpan ✓');
+                })
+                .catch(err => {
+                    console.error("✗ Gagal menyimpan: ", err);
+                    showToast('Gagal menyimpan!');
+                });
 
             closeCellEditor();
             renderEditTable();
