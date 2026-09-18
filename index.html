@@ -82,17 +82,13 @@
             appId: "1:891983424435:web:25943b3c2831a45b4ff9c6"
         };
 
-        // Inisialisasi Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // 2. Aktifkan Offline Persistence (Penyimpanan Sementara di Browser)
+        // 2. Aktifkan Offline Persistence
         db.enablePersistence().catch((err) => {
-            if (err.code == 'failed-precondition') {
-                console.log("Persistence gagal: Banyak tab terbuka.");
-            } else if (err.code == 'unimplemented') {
-                console.log("Browser tidak mendukung persistence.");
-            }
+            if (err.code == 'failed-precondition') console.log("Persistence gagal: Banyak tab terbuka.");
+            else if (err.code == 'unimplemented') console.log("Browser tidak mendukung persistence.");
         });
 
         // 3. Variabel Global
@@ -103,7 +99,7 @@
         let studentsData = [];
         let attendanceRecords = {};
 
-        // 4. Ambil Data Kegiatan dari Firestore
+        // 4. Ambil Data Kegiatan
         db.collection('activities').orderBy('name').onSnapshot(snapshot => {
             const select = document.getElementById('activitySelect');
             select.innerHTML = '<option value="">-- Pilih Kegiatan --</option>';
@@ -115,19 +111,15 @@
             });
         });
 
-        // 5. Ambil Data Murid yang Statusnya "Aktif"
-        // PERBAIKAN: orderBy('nis') dihapus dari Firebase query untuk menghindari error Composite Index.
-        // Pengurutan dilakukan otomatis di JavaScript setelah data diambil.
+        // 5. Ambil Data Murid Aktif (Urutkan otomatis di JavaScript untuk menghindari error Index)
         db.collection('students').where('status', '==', 'Aktif').onSnapshot(snapshot => {
             studentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            
-            // Urutkan data murid berdasarkan NIS secara otomatis di HP/Browser
-            studentsData.sort((a, b) => a.nis.localeCompare(b.nis));
-            
+            // Urutkan berdasarkan NIS secara lokal
+            studentsData.sort((a, b) => (a.nis || '').localeCompare(b.nis || ''));
             renderStudentList();
         });
 
-        // 6. Fungsi Render Daftar Murid ke Tabel
+        // 6. Render Daftar Murid
         function renderStudentList() {
             const container = document.getElementById('studentList');
             
@@ -144,25 +136,31 @@
             container.innerHTML = '';
             
             studentsData.forEach(student => {
-                const record = attendanceRecords[student.nis] || { present: false, note: '' };
+                // PERBAIKAN: Menggunakan student.id sebagai kunci, bukan NIS.
+                // Ini mencegah tabrakan data jika ada 2 murid dengan NIS yang sama.
+                const record = attendanceRecords[student.id] || { present: false, note: '' };
+                
+                // LOGIKA KETERANGAN:
+                // Saat ini: Ceklis = Aktif, Tidak Ceklis = Nonaktif (Disabled)
+                // Jika ingin dibalik (Tidak Ceklis = Harus isi alasan), ubah menjadi: const isKetDisabled = record.present;
                 const isKetDisabled = !record.present; 
 
                 const row = document.createElement('div');
                 row.className = 'grid grid-cols-12 gap-1 p-2 items-center hover:bg-gray-50 transition-colors';
                 
                 row.innerHTML = `
-                    <div class="col-span-2 text-center text-xs font-semibold text-gray-500">${student.nis}</div>
+                    <div class="col-span-2 text-center text-xs font-semibold text-gray-500">${student.nis || '-'}</div>
                     <div class="col-span-4 text-sm font-medium text-gray-800 truncate pr-1">${student.nama}</div>
                     <div class="col-span-2 flex justify-center">
                         <input type="checkbox" 
                             class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
                             ${record.present ? 'checked' : ''}
-                            onchange="togglePresence('${student.nis}', this.checked)">
+                            onchange="togglePresence('${student.id}', this.checked)">
                     </div>
                     <div class="col-span-4 flex justify-center">
                         <select class="w-full text-xs border border-gray-300 rounded p-1 focus:outline-none focus:border-blue-500 ${isKetDisabled ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-700'}"
                             ${isKetDisabled ? 'disabled' : ''}
-                            onchange="updateNote('${student.nis}', this.value)">
+                            onchange="updateNote('${student.id}', this.value)">
                             <option value="">-</option>
                             <option value="S" ${record.note === 'S' ? 'selected' : ''}>S (Sakit)</option>
                             <option value="I" ${record.note === 'I' ? 'selected' : ''}>I (Izin)</option>
@@ -174,7 +172,7 @@
             });
         }
 
-        // 7. Event Handler saat Dropdown Kegiatan Berubah
+        // 7. Event Handler Pilih Kegiatan
         document.getElementById('activitySelect').addEventListener('change', function(e) {
             currentActivityId = e.target.value;
             if (currentActivityId) {
@@ -185,7 +183,7 @@
             }
         });
 
-        // 8. Mendengarkan Perubahan Data Presensi di Firebase
+        // 8. Dengarkan Perubahan Presensi
         function listenToAttendance() {
             if (!currentActivityId) return;
             
@@ -200,45 +198,46 @@
             });
         }
 
-        // 9. Fungsi Toggle Presensi (Ceklis)
-        function togglePresence(nis, isChecked) {
+        // 9. Toggle Presensi (Ceklis)
+        function togglePresence(id, isChecked) {
             if (!currentActivityId) return;
 
-            if (!attendanceRecords[nis]) attendanceRecords[nis] = {};
-            attendanceRecords[nis].present = isChecked;
+            if (!attendanceRecords[id]) attendanceRecords[id] = {};
+            attendanceRecords[id].present = isChecked;
             
+            // Jika tidak hadir, kosongkan keterangan
             if (!isChecked) {
-                attendanceRecords[nis].note = '';
+                attendanceRecords[id].note = '';
             }
 
-            // SIMPAN KE FIREBASE
+            // Simpan ke Firebase menggunakan ID Murid
             const docId = `${today}_${currentActivityId}`;
             const updateData = {};
-            updateData[`records.${nis}.present`] = isChecked;
-            updateData[`records.${nis}.note`] = attendanceRecords[nis].note;
-            updateData[`records.${nis}.updatedAt`] = firebase.firestore.FieldValue.serverTimestamp();
+            updateData[`records.${id}.present`] = isChecked;
+            updateData[`records.${id}.note`] = attendanceRecords[id].note;
+            updateData[`records.${id}.updatedAt`] = firebase.firestore.FieldValue.serverTimestamp();
 
             db.collection('attendance').doc(docId).set(updateData, { merge: true })
-                .then(() => console.log(`Presensi ${nis} tersimpan`))
+                .then(() => console.log(`Presensi ${id} tersimpan`))
                 .catch(err => console.error("Gagal menyimpan: ", err));
                 
             renderStudentList();
         }
 
-        // 10. Fungsi Update Keterangan (S, I, A)
-        function updateNote(nis, note) {
+        // 10. Update Keterangan
+        function updateNote(id, note) {
             if (!currentActivityId) return;
-            if (!attendanceRecords[nis]) attendanceRecords[nis] = { present: false };
+            if (!attendanceRecords[id]) attendanceRecords[id] = { present: false };
 
-            attendanceRecords[nis].note = note;
+            attendanceRecords[id].note = note;
 
             const docId = `${today}_${currentActivityId}`;
             const updateData = {};
-            updateData[`records.${nis}.note`] = note;
-            updateData[`records.${nis}.updatedAt`] = firebase.firestore.FieldValue.serverTimestamp();
+            updateData[`records.${id}.note`] = note;
+            updateData[`records.${id}.updatedAt`] = firebase.firestore.FieldValue.serverTimestamp();
 
             db.collection('attendance').doc(docId).set(updateData, { merge: true })
-                .then(() => console.log(`Keterangan ${nis} tersimpan`))
+                .then(() => console.log(`Keterangan ${id} tersimpan`))
                 .catch(err => console.error("Gagal menyimpan: ", err));
         }
     </script>
