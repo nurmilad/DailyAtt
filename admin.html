@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Admin - Daily Activity Attendace</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 600; }
+    </style>
+</head>
+<body class="bg-gray-50 h-screen flex flex-col overflow-hidden">
+
+    <!-- ================= LOGIN VIEW ================= -->
+    <div id="loginView" class="flex-1 flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-sm text-center border border-gray-100">
+            <div class="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-user-shield text-blue-600 text-2xl"></i>
+            </div>
+            <h2 class="text-xl font-bold text-gray-800 mb-1">Admin Panel</h2>
+            <p class="text-sm text-gray-500 mb-6">Daily Activity Attendace NBS</p>
+            
+            <input type="password" id="adminPassword" placeholder="Masukkan Password" 
+                class="w-full p-3 border border-gray-300 rounded-lg mb-4 text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-colors shadow-md">
+                Masuk
+            </button>
+            <p id="loginError" class="text-red-500 text-sm mt-3 hidden">Password salah!</p>
+            
+            <a href="index.html" class="block mt-6 text-sm text-gray-400 hover:text-blue-500 transition-colors">
+                <i class="fas fa-arrow-left mr-1"></i> Kembali ke Daftar Hadir
+            </a>
+        </div>
+    </div>
+
+    <!-- ================= DASHBOARD VIEW ================= -->
+    <div id="dashboardView" class="hidden flex-1 flex flex-col overflow-hidden">
+        
+        <!-- Header Dashboard -->
+        <header class="bg-white shadow-sm z-10 sticky top-0">
+            <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex flex-col">
+                    <h1 class="text-lg font-bold text-gray-800 leading-tight">Admin Panel</h1>
+                    <span class="text-xs text-gray-500 font-medium tracking-wide">NBS Student</span>
+                </div>
+                <button onclick="logout()" class="text-red-500 hover:bg-red-50 w-10 h-10 rounded-full flex items-center justify-center transition-colors">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigasi Tab -->
+        <div class="bg-white border-b border-gray-200 max-w-md mx-auto w-full flex justify-around text-sm text-gray-500">
+            <button onclick="switchTab('activities')" id="tab-activities" class="flex-1 py-3 tab-active transition-colors">
+                <i class="fas fa-calendar-check block mb-1"></i> Kegiatan
+            </button>
+            <button onclick="switchTab('students')" id="tab-students" class="flex-1 py-3 transition-colors">
+                <i class="fas fa-users block mb-1"></i> Murid
+            </button>
+            <button onclick="switchTab('settings')" id="tab-settings" class="flex-1 py-3 transition-colors">
+                <i class="fas fa-cog block mb-1"></i> Keterangan
+            </button>
+        </div>
+
+        <!-- Konten Tab -->
+        <main class="flex-1 overflow-y-auto max-w-md mx-auto w-full p-4">
+            
+            <!-- TAB 1: KEGIATAN -->
+            <div id="content-activities" class="block">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-bold text-gray-700">Daftar Kegiatan</h2>
+                    <button onclick="addActivity()" class="bg-blue-600 text-white text-xs px-3 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-plus mr-1"></i> Tambah
+                    </button>
+                </div>
+                <div id="activityList" class="space-y-3">
+                    <div class="text-center text-gray-400 text-sm py-4">Memuat data...</div>
+                </div>
+            </div>
+
+            <!-- TAB 2: MURID -->
+            <div id="content-students" class="hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-bold text-gray-700">Daftar Murid</h2>
+                    <button onclick="addStudent()" class="bg-blue-600 text-white text-xs px-3 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-plus mr-1"></i> Tambah
+                    </button>
+                </div>
+                <div id="studentList" class="space-y-3">
+                    <div class="text-center text-gray-400 text-sm py-4">Memuat data...</div>
+                </div>
+            </div>
+
+            <!-- TAB 3: PENGATURAN KETERANGAN -->
+            <div id="content-settings" class="hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-bold text-gray-700">Kode Keterangan (Ket.)</h2>
+                    <button onclick="addNote()" class="bg-blue-600 text-white text-xs px-3 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-plus mr-1"></i> Tambah
+                    </button>
+                </div>
+                <p class="text-xs text-gray-500 mb-4">Maksimal 2 huruf kapital. Contoh: S (Sakit), I (Izin), A (Alpa).</p>
+                <div id="noteList" class="space-y-2">
+                    <div class="text-center text-gray-400 text-sm py-4">Memuat data...</div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        // 1. Konfigurasi Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDQKoko-TUh86oZl-T84blF2R937NnZ68Q",
+            authDomain: "quiz-b09cb.firebaseapp.com",
+            projectId: "quiz-b09cb",
+            storageBucket: "quiz-b09cb.firebasestorage.app",
+            messagingSenderId: "891983424435",
+            appId: "1:891983424435:web:25943b3c2831a45b4ff9c6"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // 2. Cek Status Login saat halaman dimuat
+        window.onload = function() {
+            if (sessionStorage.getItem('isAdmin') === 'true') {
+                showDashboard();
+            }
+        };
+
+        // 3. Fungsi Login (Membaca dari collection 'password' di Firebase)
+        function login() {
+            const inputPass = document.getElementById('adminPassword').value;
+            const errorMsg = document.getElementById('loginError');
+            
+            if (!inputPass) {
+                errorMsg.innerText = "Password tidak boleh kosong!";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            // Mengambil semua dokumen di collection 'password'
+            db.collection('password').get().then(snapshot => {
+                let isValid = false;
+                snapshot.forEach(doc => {
+                    // Cek apakah ada field 'password' yang cocok dengan input user
+                    // (Berdasarkan screenshot Anda: field password berisi "santri" atau "osisi")
+                    if (doc.data().password === inputPass) {
+                        isValid = true;
+                    }
+                });
+
+                if (isValid) {
+                    sessionStorage.setItem('isAdmin', 'true');
+                    showDashboard();
+                } else {
+                    errorMsg.innerText = "Password salah!";
+                    errorMsg.classList.remove('hidden');
+                }
+            }).catch(err => {
+                console.error("Error login: ", err);
+                errorMsg.innerText = "Terjadi kesalahan koneksi.";
+                errorMsg.classList.remove('hidden');
+            });
+        }
+
+        function logout() {
+            sessionStorage.removeItem('isAdmin');
+            location.reload();
+        }
+
+        function showDashboard() {
+            document.getElementById('loginView').classList.add('hidden');
+            document.getElementById('dashboardView').classList.remove('hidden');
+            document.getElementById('dashboardView').classList.add('flex');
+            
+            // Mulai dengarkan data dari Firebase
+            listenActivities();
+            listenStudents();
+            listenNotes();
+        }
+
+        // 4. Logika Navigasi Tab
+        function switchTab(tabName) {
+            // Reset semua tab
+            document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.remove('tab-active'));
+            document.querySelectorAll('[id^="content-"]').forEach(el => el.classList.add('hidden'));
+            
+            // Aktifkan tab yang dipilih
+            document.getElementById(`tab-${tabName}`).classList.add('tab-active');
+            document.getElementById(`content-${tabName}`).classList.remove('hidden');
+        }
+
+        // ================= CRUD KEGIATAN =================
+        function listenActivities() {
+            db.collection('activities').orderBy('name').onSnapshot(snapshot => {
+                const container = document.getElementById('activityList');
+                container.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    container.innerHTML = '<div class="text-center text-gray-400 text-sm py-4">Belum ada kegiatan. Silakan tambah.</div>';
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const div = document.createElement('div');
+                    div.className = 'bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex justify-between items-center';
+                    div.innerHTML = `
+                        <span class="font-medium text-gray-700 text-sm">${data.name}</span>
+                        <div class="flex gap-2">
+                            <button onclick="editActivity('${doc.id}', '${data.name}')" class="text-blue-500 hover:text-blue-700 p-1">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteActivity('${doc.id}')" class="text-red-500 hover:text-red-700 p-1">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            });
+        }
+
+        function addActivity() {
+            const name = prompt("Masukkan Nama Kegiatan Baru:");
+            if (name && name.trim() !== "") {
+                // Ini akan OTOMATIS membuat collection 'activities' jika belum ada
+                db.collection('activities').add({
+                    name: name.trim(),
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => alert("Kegiatan berhasil ditambahkan!"))
+                  .catch(err => alert("Gagal menambahkan: " + err));
+            }
+        }
+
+        function editActivity(id, oldName) {
+            const newName = prompt("Edit Nama Kegiatan:", oldName);
+            if (newName && newName.trim() !== "" && newName !== oldName) {
+                db.collection('activities').doc(id).update({
+                    name: newName.trim()
+                }).then(() => alert("Kegiatan berhasil diupdate!"))
+                  .catch(err => alert("Gagal mengupdate: " + err));
+            }
+        }
+
+        function deleteActivity(id) {
+            if (confirm("Yakin ingin menghapus kegiatan ini? Data presensi terkait mungkin akan terpengaruh.")) {
+                db.collection('activities').doc(id).delete()
+                  .then(() => alert("Kegiatan dihapus."))
+                  .catch(err => alert("Gagal menghapus: " + err));
+            }
+        }
+
+        // ================= CRUD MURID =================
+        function listenStudents() {
+            db.collection('students').orderBy('nis').onSnapshot(snapshot => {
+                const container = document.getElementById('studentList');
+                container.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    container.innerHTML = '<div class="text-center text-gray-400 text-sm py-4">Belum ada murid. Silakan tambah.</div>';
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const isAktif = data.status === 'Aktif';
+                    const statusClass = isAktif ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
+                    
+                    const div = document.createElement('div');
+                    div.className = 'bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex flex-col gap-2';
+                    div.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="font-bold text-gray-800 text-sm">${data.nama}</div>
+                                <div class="text-xs text-gray-500">NIS: ${data.nis}</div>
+                            </div>
+                            <button onclick="deleteStudent('${doc.id}')" class="text-red-400 hover:text-red-600 p-1">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <div class="flex justify-between items-center mt-1 border-t pt-2">
+                            <span class="text-xs text-gray-500">Status:</span>
+                            <button onclick="toggleStatus('${doc.id}', '${data.status}')" class="text-xs px-3 py-1 rounded-full font-semibold ${statusClass} transition-colors">
+                                ${data.status} (Klik untuk ubah)
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            });
+        }
+
+        function addStudent() {
+            const nis = prompt("Masukkan NIS Murid:");
+            if (!nis || nis.trim() === "") return;
+            
+            const nama = prompt("Masukkan Nama Murid:");
+            if (!nama || nama.trim() === "") return;
+
+            // Ini akan OTOMATIS membuat collection 'students' jika belum ada
+            db.collection('students').add({
+                nis: nis.trim(),
+                nama: nama.trim(),
+                status: 'Aktif', // Default status saat ditambahkan
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => alert("Murid berhasil ditambahkan!"))
+              .catch(err => alert("Gagal menambahkan: " + err));
+        }
+
+        function toggleStatus(id, currentStatus) {
+            const newStatus = currentStatus === 'Aktif' ? 'Tidak Aktif' : 'Aktif';
+            db.collection('students').doc(id).update({
+                status: newStatus
+            }).then(() => console.log("Status diubah"))
+              .catch(err => alert("Gagal mengubah status: " + err));
+        }
+
+        function deleteStudent(id) {
+            if (confirm("Yakin ingin menghapus murid ini? Semua data presensinya akan hilang.")) {
+                db.collection('students').doc(id).delete()
+                  .then(() => alert("Murid dihapus."))
+                  .catch(err => alert("Gagal menghapus: " + err));
+            }
+        }
+
+        // ================= CRUD KETERANGAN (SETTINGS) =================
+        function listenNotes() {
+            // Kita simpan daftar keterangan di collection 'settings', document 'notes'
+            db.collection('settings').doc('notes').onSnapshot(doc => {
+                const container = document.getElementById('noteList');
+                container.innerHTML = '';
+                
+                let notes = [];
+                if (doc.exists && doc.data().list) {
+                    notes = doc.data().list;
+                } else {
+                    // Jika belum ada di database, kita buat default S, I, A secara otomatis
+                    notes = ['S', 'I', 'A'];
+                    db.collection('settings').doc('notes').set({ list: notes });
+                }
+
+                if (notes.length === 0) {
+                    container.innerHTML = '<div class="text-center text-gray-400 text-sm py-4">Belum ada kode keterangan.</div>';
+                    return;
+                }
+
+                notes.forEach((note, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex justify-between items-center';
+                    div.innerHTML = `
+                        <span class="font-bold text-gray-700 text-lg">${note}</span>
+                        <button onclick="deleteNote(${index})" class="text-red-500 hover:text-red-700 p-1">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `;
+                    container.appendChild(div);
+                });
+            });
+        }
+
+        function addNote() {
+            const note = prompt("Masukkan Kode Keterangan (Maks 2 Huruf Kapital):");
+            if (!note) return;
+            
+            const cleanNote = note.trim().toUpperCase();
+            
+            // Validasi: Hanya huruf, maksimal 2 karakter
+            if (!/^[A-Z]{1,2}$/.test(cleanNote)) {
+                alert("Format salah! Hanya boleh 1-2 huruf kapital. Contoh: S, I, A, D, TK");
+                return;
+            }
+
+            db.collection('settings').doc('notes').get().then(doc => {
+                let notes = doc.exists ? doc.data().list || [] : [];
+                if (notes.includes(cleanNote)) {
+                    alert("Kode keterangan sudah ada!");
+                    return;
+                }
+                notes.push(cleanNote);
+                // Update array di Firebase (otomatis membuat collection 'settings' jika belum ada)
+                return db.collection('settings').doc('notes').set({ list: notes });
+            }).then(() => alert("Keterangan berhasil ditambahkan!"))
+              .catch(err => alert("Gagal menambahkan: " + err));
+        }
+
+        function deleteNote(index) {
+            if (confirm("Yakin ingin menghapus kode keterangan ini?")) {
+                db.collection('settings').doc('notes').get().then(doc => {
+                    if (doc.exists) {
+                        let notes = doc.data().list || [];
+                        notes.splice(index, 1);
+                        return db.collection('settings').doc('notes').set({ list: notes });
+                    }
+                }).catch(err => alert("Gagal menghapus: " + err));
+            }
+        }
+    </script>
+</body>
+</html>
