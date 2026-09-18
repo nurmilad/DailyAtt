@@ -79,8 +79,9 @@
         let currentActivityId = null;
         let studentsData = [];
         let attendanceRecords = {};
+        let noteOptions = []; // Variabel baru untuk menyimpan daftar keterangan dari Firebase
 
-        // Ambil Data Kegiatan
+        // 1. Ambil Data Kegiatan
         db.collection('activities').orderBy('name').onSnapshot(snapshot => {
             const select = document.getElementById('activitySelect');
             select.innerHTML = '<option value="">-- Pilih Kegiatan --</option>';
@@ -92,14 +93,25 @@
             });
         });
 
-        // Ambil Data Murid Aktif
+        // 2. Ambil Data Murid Aktif
         db.collection('students').where('status', '==', 'Aktif').onSnapshot(snapshot => {
             studentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             studentsData.sort((a, b) => (a.nis || '').localeCompare(b.nis || ''));
             renderStudentList();
         });
 
-        // Render Tabel
+        // 3. AMBIL DATA KETERANGAN DARI SETTINGS/NOTES/LIST (BARU)
+        db.collection('settings').doc('notes').onSnapshot(doc => {
+            if (doc.exists && doc.data().list) {
+                noteOptions = doc.data().list;
+            } else {
+                noteOptions = []; // Kosongkan jika belum diatur di Admin
+            }
+            // Render ulang tabel agar dropdown keterangan terupdate
+            renderStudentList();
+        });
+
+        // 4. Render Tabel
         function renderStudentList() {
             const container = document.getElementById('studentList');
             
@@ -121,6 +133,12 @@
                 // LOGIKA KETERANGAN: Jika Hadir (Ceklis Aktif) = TERKUNCI. Jika Tidak Hadir = TERBUKA.
                 const isKetDisabled = record.present; 
 
+                // Membuat opsi dropdown secara dinamis dari data Firebase
+                let optionsHtml = '<option value="">-</option>';
+                noteOptions.forEach(opt => {
+                    optionsHtml += `<option value="${opt}" ${record.note === opt ? 'selected' : ''}>${opt}</option>`;
+                });
+
                 const row = document.createElement('div');
                 row.className = 'grid grid-cols-12 gap-1 p-2 items-center hover:bg-gray-50 transition-colors';
                 
@@ -137,10 +155,7 @@
                         <select class="w-full text-xs border border-gray-300 rounded p-1 focus:outline-none focus:border-blue-500 ${isKetDisabled ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-700'}"
                             ${isKetDisabled ? 'disabled' : ''}
                             onchange="updateNote('${student.id}', this.value)">
-                            <option value="">-</option>
-                            <option value="S" ${record.note === 'S' ? 'selected' : ''}>S (Sakit)</option>
-                            <option value="I" ${record.note === 'I' ? 'selected' : ''}>I (Izin)</option>
-                            <option value="A" ${record.note === 'A' ? 'selected' : ''}>A (Alpa)</option>
+                            ${optionsHtml}
                         </select>
                     </div>
                 `;
@@ -159,45 +174,35 @@
             }
         });
 
-        // ==========================================================
-        // PERBAIKAN UTAMA: Mencegah data lokal tertimpa data server yang belum update
-        // ==========================================================
         function listenToAttendance() {
             if (!currentActivityId) return;
             const docId = `${today}_${currentActivityId}`;
             
             db.collection('attendance').doc(docId).onSnapshot(doc => {
                 if (doc.exists) {
-                    // Hanya timpa data lokal JIKA tidak ada proses simpan yang tertunda (pending writes)
                     if (!doc.metadata.hasPendingWrites) {
                         attendanceRecords = doc.data().records || {};
                         renderStudentList();
                     }
                 } else {
-                    // Jika dokumen belum ada, biarkan data lokal (kosong)
                     renderStudentList();
                 }
             });
         }
 
-        // FUNGSI UTAMA: Toggle Presensi (Ceklis)
         function togglePresence(id, isChecked) {
             if (!currentActivityId) return;
 
             if (!attendanceRecords[id]) attendanceRecords[id] = {};
             attendanceRecords[id].present = isChecked;
             
-            // Jika Hadir (Ceklis Aktif), maka hapus isi keterangan.
             if (isChecked) {
                 attendanceRecords[id].note = '';
             }
 
-            // Render UI segera (Optimistic UI) agar terasa responsif
             renderStudentList();
 
             const docId = `${today}_${currentActivityId}`;
-            
-            // Menggunakan objek bersarang agar lebih aman dari tabrakan data
             const updateData = {
                 records: {
                     [id]: {
@@ -213,7 +218,6 @@
                 .catch(err => console.error("Gagal menyimpan: ", err));
         }
 
-        // FUNGSI UPDATE KETERANGAN
         function updateNote(id, note) {
             if (!currentActivityId) return;
             if (!attendanceRecords[id]) attendanceRecords[id] = { present: false };
@@ -221,7 +225,6 @@
             attendanceRecords[id].note = note;
 
             const docId = `${today}_${currentActivityId}`;
-            
             const updateData = {
                 records: {
                     [id]: {
