@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Admin - Daily Activity Attendace</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
@@ -52,9 +49,14 @@
                     <h1 class="text-lg font-bold text-gray-800 leading-tight">Admin Panel</h1>
                     <span class="text-xs text-gray-500 font-medium tracking-wide">NBS Student</span>
                 </div>
-                <button onclick="logout()" class="text-red-500 hover:bg-red-50 w-10 h-10 rounded-full flex items-center justify-center transition-colors">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
+                <div class="flex gap-2">
+                    <a href="view.html" class="bg-gray-100 hover:bg-gray-200 text-gray-700 w-10 h-10 rounded-full flex items-center justify-center shadow-sm transition-colors" title="Rekap Bulanan">
+                        <i class="fas fa-chart-bar"></i>
+                    </a>
+                    <button onclick="logout()" class="text-red-500 hover:bg-red-50 w-10 h-10 rounded-full flex items-center justify-center transition-colors" title="Logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -91,12 +93,31 @@
             <div id="content-students" class="hidden">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="font-bold text-gray-700">Daftar Murid</h2>
-                    <button onclick="addStudent()" class="bg-blue-600 text-white text-xs px-3 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors">
-                        <i class="fas fa-plus mr-1"></i> Tambah
-                    </button>
+                    <div class="flex gap-2">
+                        <button onclick="openImportModal()" class="bg-green-600 text-white text-xs px-3 py-2 rounded-lg shadow hover:bg-green-700 transition-colors">
+                            <i class="fas fa-file-import mr-1"></i> Impor
+                        </button>
+                        <button onclick="addStudent()" class="bg-blue-600 text-white text-xs px-3 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-plus mr-1"></i> Tambah
+                        </button>
+                    </div>
                 </div>
-                <div id="studentList" class="space-y-3">
-                    <div class="text-center text-gray-400 text-sm py-4">Memuat data...</div>
+                
+                <!-- Tabel Murid -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-100 text-xs text-gray-600 border-b border-gray-200">
+                            <tr>
+                                <th class="p-2 font-semibold w-[18%]">NIS</th>
+                                <th class="p-2 font-semibold w-[42%]">Nama</th>
+                                <th class="p-2 font-semibold text-center w-[18%]">Status</th>
+                                <th class="p-2 font-semibold text-center w-[22%]">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentListBody" class="text-sm divide-y divide-gray-100">
+                            <tr><td colspan="4" class="p-4 text-center text-gray-400 text-sm">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -117,6 +138,53 @@
         </main>
     </div>
 
+    <!-- ================= MODAL EDIT MURID ================= -->
+    <div id="editStudentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <h3 class="font-bold text-gray-800 text-lg mb-4">Edit Data Murid</h3>
+            
+            <label class="block text-xs font-medium text-gray-600 mb-1">NIS</label>
+            <input type="text" id="editNis" class="w-full p-2 border border-gray-300 rounded-lg mb-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <label class="block text-xs font-medium text-gray-600 mb-1">Nama Murid</label>
+            <input type="text" id="editNama" class="w-full p-2 border border-gray-300 rounded-lg mb-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <div class="flex gap-2">
+                <button onclick="closeEditModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold transition-colors">
+                    Batal
+                </button>
+                <button onclick="saveEditStudent()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-semibold transition-colors">
+                    Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL IMPOR MURID ================= -->
+    <div id="importModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <h3 class="font-bold text-gray-800 text-lg mb-2">Impor Data Murid</h3>
+            <p class="text-xs text-gray-500 mb-4">Format: <b>NIS, Nama</b> (satu murid per baris). Contoh:</p>
+            <div class="bg-gray-50 p-2 rounded-lg mb-3 text-xs text-gray-600 font-mono">
+                2024001, YUDI<br>
+                2024002, YUNUS<br>
+                2024003, HERA
+            </div>
+            
+            <textarea id="importData" rows="6" placeholder="Paste data di sini..." 
+                class="w-full p-2 border border-gray-300 rounded-lg mb-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
+            
+            <div class="flex gap-2">
+                <button onclick="closeImportModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold transition-colors">
+                    Batal
+                </button>
+                <button onclick="processImport()" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm font-semibold transition-colors">
+                    <i class="fas fa-upload mr-1"></i> Impor
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -135,14 +203,14 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // 2. Cek Status Login saat halaman dimuat
+        // 2. Cek Status Login
         window.onload = function() {
             if (sessionStorage.getItem('isAdmin') === 'true') {
                 showDashboard();
             }
         };
 
-        // 3. Fungsi Login (Membaca dari collection 'password' di Firebase)
+        // 3. Fungsi Login
         function login() {
             const inputPass = document.getElementById('adminPassword').value;
             const errorMsg = document.getElementById('loginError');
@@ -153,12 +221,9 @@
                 return;
             }
 
-            // Mengambil semua dokumen di collection 'password'
             db.collection('password').get().then(snapshot => {
                 let isValid = false;
                 snapshot.forEach(doc => {
-                    // Cek apakah ada field 'password' yang cocok dengan input user
-                    // (Berdasarkan screenshot Anda: field password berisi "santri" atau "osisi")
                     if (doc.data().password === inputPass) {
                         isValid = true;
                     }
@@ -188,19 +253,16 @@
             document.getElementById('dashboardView').classList.remove('hidden');
             document.getElementById('dashboardView').classList.add('flex');
             
-            // Mulai dengarkan data dari Firebase
             listenActivities();
             listenStudents();
             listenNotes();
         }
 
-        // 4. Logika Navigasi Tab
+        // 4. Navigasi Tab
         function switchTab(tabName) {
-            // Reset semua tab
             document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.remove('tab-active'));
             document.querySelectorAll('[id^="content-"]').forEach(el => el.classList.add('hidden'));
             
-            // Aktifkan tab yang dipilih
             document.getElementById(`tab-${tabName}`).classList.add('tab-active');
             document.getElementById(`content-${tabName}`).classList.remove('hidden');
         }
@@ -223,7 +285,7 @@
                     div.innerHTML = `
                         <span class="font-medium text-gray-700 text-sm">${data.name}</span>
                         <div class="flex gap-2">
-                            <button onclick="editActivity('${doc.id}', '${data.name}')" class="text-blue-500 hover:text-blue-700 p-1">
+                            <button onclick="editActivity('${doc.id}', '${data.name.replace(/'/g, "\\'")}')" class="text-blue-500 hover:text-blue-700 p-1">
                                 <i class="fas fa-edit"></i>
                             </button>
                             <button onclick="deleteActivity('${doc.id}')" class="text-red-500 hover:text-red-700 p-1">
@@ -239,7 +301,6 @@
         function addActivity() {
             const name = prompt("Masukkan Nama Kegiatan Baru:");
             if (name && name.trim() !== "") {
-                // Ini akan OTOMATIS membuat collection 'activities' jika belum ada
                 db.collection('activities').add({
                     name: name.trim(),
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -266,14 +327,14 @@
             }
         }
 
-        // ================= CRUD MURID =================
+        // ================= CRUD MURID (TABEL) =================
         function listenStudents() {
             db.collection('students').orderBy('nis').onSnapshot(snapshot => {
-                const container = document.getElementById('studentList');
-                container.innerHTML = '';
+                const tbody = document.getElementById('studentListBody');
+                tbody.innerHTML = '';
                 
                 if (snapshot.empty) {
-                    container.innerHTML = '<div class="text-center text-gray-400 text-sm py-4">Belum ada murid. Silakan tambah.</div>';
+                    tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-400 text-sm">Belum ada murid. Silakan tambah atau impor.</td></tr>';
                     return;
                 }
 
@@ -281,27 +342,31 @@
                     const data = doc.data();
                     const isAktif = data.status === 'Aktif';
                     const statusClass = isAktif ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
+                    const statusLabel = isAktif ? 'Aktif' : 'Off';
                     
-                    const div = document.createElement('div');
-                    div.className = 'bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex flex-col gap-2';
-                    div.innerHTML = `
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <div class="font-bold text-gray-800 text-sm">${data.nama}</div>
-                                <div class="text-xs text-gray-500">NIS: ${data.nis}</div>
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-gray-50';
+                    tr.innerHTML = `
+                        <td class="p-2 text-xs font-semibold text-gray-600">${data.nis || '-'}</td>
+                        <td class="p-2 text-xs font-medium text-gray-800 truncate max-w-[100px]">${data.nama || '-'}</td>
+                        <td class="p-2 text-center">
+                            <button onclick="toggleStatus('${doc.id}', '${data.status}')" 
+                                class="text-xs px-2 py-1 rounded-full font-semibold ${statusClass}">
+                                ${statusLabel}
+                            </button>
+                        </td>
+                        <td class="p-2 text-center">
+                            <div class="flex justify-center gap-2">
+                                <button onclick="openEditModal('${doc.id}')" class="text-blue-500 hover:text-blue-700" title="Edit">
+                                    <i class="fas fa-pencil-alt"></i>
+                                </button>
+                                <button onclick="deleteStudent('${doc.id}')" class="text-red-500 hover:text-red-700" title="Hapus">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </div>
-                            <button onclick="deleteStudent('${doc.id}')" class="text-red-400 hover:text-red-600 p-1">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                        <div class="flex justify-between items-center mt-1 border-t pt-2">
-                            <span class="text-xs text-gray-500">Status:</span>
-                            <button onclick="toggleStatus('${doc.id}', '${data.status}')" class="text-xs px-3 py-1 rounded-full font-semibold ${statusClass} transition-colors">
-                                ${data.status} (Klik untuk ubah)
-                            </button>
-                        </div>
+                        </td>
                     `;
-                    container.appendChild(div);
+                    tbody.appendChild(tr);
                 });
             });
         }
@@ -313,11 +378,10 @@
             const nama = prompt("Masukkan Nama Murid:");
             if (!nama || nama.trim() === "") return;
 
-            // Ini akan OTOMATIS membuat collection 'students' jika belum ada
             db.collection('students').add({
                 nis: nis.trim(),
                 nama: nama.trim(),
-                status: 'Aktif', // Default status saat ditambahkan
+                status: 'Aktif',
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             }).then(() => alert("Murid berhasil ditambahkan!"))
               .catch(err => alert("Gagal menambahkan: " + err));
@@ -339,9 +403,138 @@
             }
         }
 
-        // ================= CRUD KETERANGAN (SETTINGS) =================
+        // ================= MODAL EDIT MURID =================
+        let editingStudentId = null;
+
+        function openEditModal(id) {
+            editingStudentId = id;
+            db.collection('students').doc(id).get().then(doc => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('editNis').value = data.nis || '';
+                    document.getElementById('editNama').value = data.nama || '';
+                    document.getElementById('editStudentModal').classList.remove('hidden');
+                }
+            });
+        }
+
+        function closeEditModal() {
+            document.getElementById('editStudentModal').classList.add('hidden');
+            editingStudentId = null;
+        }
+
+        function saveEditStudent() {
+            if (!editingStudentId) return;
+            
+            const newNis = document.getElementById('editNis').value.trim();
+            const newNama = document.getElementById('editNama').value.trim();
+            
+            if (!newNis || !newNama) {
+                alert("NIS dan Nama tidak boleh kosong!");
+                return;
+            }
+
+            db.collection('students').doc(editingStudentId).update({
+                nis: newNis,
+                nama: newNama,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                alert("Data murid berhasil diupdate!");
+                closeEditModal();
+            }).catch(err => alert("Gagal mengupdate: " + err));
+        }
+
+        // ================= MODAL IMPOR MURID =================
+        function openImportModal() {
+            document.getElementById('importData').value = '';
+            document.getElementById('importModal').classList.remove('hidden');
+        }
+
+        function closeImportModal() {
+            document.getElementById('importModal').classList.add('hidden');
+        }
+
+        async function processImport() {
+            const rawData = document.getElementById('importData').value.trim();
+            if (!rawData) {
+                alert("Data impor masih kosong!");
+                return;
+            }
+
+            // Pecah per baris
+            const lines = rawData.split('\n').filter(line => line.trim() !== '');
+            
+            if (lines.length === 0) {
+                alert("Tidak ada data yang valid!");
+                return;
+            }
+
+            // Konfirmasi
+            if (!confirm(`Akan mengimpor ${lines.length} murid. Lanjutkan?`)) return;
+
+            // Tombol jadi loading
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Memproses...';
+            btn.disabled = true;
+
+            let successCount = 0;
+            let failCount = 0;
+            const errors = [];
+
+            // Proses satu per satu menggunakan Promise
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                // Pisah berdasarkan koma atau tab
+                const parts = line.split(/[,\t]/).map(p => p.trim());
+                
+                if (parts.length < 2 || !parts[0] || !parts[1]) {
+                    failCount++;
+                    errors.push(`Baris ${i + 1}: Format salah`);
+                    continue;
+                }
+
+                const nis = parts[0];
+                const nama = parts[1];
+
+                try {
+                    // Cek apakah NIS sudah ada (opsional, untuk mencegah duplikat)
+                    const existing = await db.collection('students').where('nis', '==', nis).get();
+                    if (!existing.empty) {
+                        failCount++;
+                        errors.push(`Baris ${i + 1}: NIS ${nis} sudah ada`);
+                        continue;
+                    }
+
+                    await db.collection('students').add({
+                        nis: nis,
+                        nama: nama,
+                        status: 'Aktif',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    successCount++;
+                } catch (err) {
+                    failCount++;
+                    errors.push(`Baris ${i + 1}: ${err.message}`);
+                }
+            }
+
+            // Restore tombol
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+
+            // Tampilkan hasil
+            let resultMsg = `Impor selesai!\n\n✅ Berhasil: ${successCount} murid\n❌ Gagal: ${failCount} murid`;
+            if (errors.length > 0 && errors.length <= 5) {
+                resultMsg += '\n\nDetail:\n' + errors.join('\n');
+            }
+            alert(resultMsg);
+            
+            closeImportModal();
+        }
+
+        // ================= CRUD KETERANGAN =================
         function listenNotes() {
-            // Kita simpan daftar keterangan di collection 'settings', document 'notes'
             db.collection('settings').doc('notes').onSnapshot(doc => {
                 const container = document.getElementById('noteList');
                 container.innerHTML = '';
@@ -350,7 +543,6 @@
                 if (doc.exists && doc.data().list) {
                     notes = doc.data().list;
                 } else {
-                    // Jika belum ada di database, kita buat default S, I, A secara otomatis
                     notes = ['S', 'I', 'A'];
                     db.collection('settings').doc('notes').set({ list: notes });
                 }
@@ -380,7 +572,6 @@
             
             const cleanNote = note.trim().toUpperCase();
             
-            // Validasi: Hanya huruf, maksimal 2 karakter
             if (!/^[A-Z]{1,2}$/.test(cleanNote)) {
                 alert("Format salah! Hanya boleh 1-2 huruf kapital. Contoh: S, I, A, D, TK");
                 return;
@@ -393,7 +584,6 @@
                     return;
                 }
                 notes.push(cleanNote);
-                // Update array di Firebase (otomatis membuat collection 'settings' jika belum ada)
                 return db.collection('settings').doc('notes').set({ list: notes });
             }).then(() => alert("Keterangan berhasil ditambahkan!"))
               .catch(err => alert("Gagal menambahkan: " + err));
