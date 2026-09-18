@@ -87,8 +87,6 @@
         const db = firebase.firestore();
 
         // 2. Aktifkan Offline Persistence (Penyimpanan Sementara di Browser)
-        // Ini memastikan aplikasi tetap bisa digunakan saat tidak ada internet.
-        // Data akan otomatis terkirim ke Firebase saat internet menyala.
         db.enablePersistence().catch((err) => {
             if (err.code == 'failed-precondition') {
                 console.log("Persistence gagal: Banyak tab terbuka.");
@@ -106,7 +104,6 @@
         let attendanceRecords = {};
 
         // 4. Ambil Data Kegiatan dari Firestore
-        // Jika collection 'activities' belum ada di Firebase, ini tidak akan error, hanya kosong.
         db.collection('activities').orderBy('name').onSnapshot(snapshot => {
             const select = document.getElementById('activitySelect');
             select.innerHTML = '<option value="">-- Pilih Kegiatan --</option>';
@@ -119,9 +116,14 @@
         });
 
         // 5. Ambil Data Murid yang Statusnya "Aktif"
-        // Jika collection 'students' belum ada, ini juga tidak akan error.
-        db.collection('students').where('status', '==', 'Aktif').orderBy('nis').onSnapshot(snapshot => {
+        // PERBAIKAN: orderBy('nis') dihapus dari Firebase query untuk menghindari error Composite Index.
+        // Pengurutan dilakukan otomatis di JavaScript setelah data diambil.
+        db.collection('students').where('status', '==', 'Aktif').onSnapshot(snapshot => {
             studentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            // Urutkan data murid berdasarkan NIS secara otomatis di HP/Browser
+            studentsData.sort((a, b) => a.nis.localeCompare(b.nis));
+            
             renderStudentList();
         });
 
@@ -209,7 +211,7 @@
                 attendanceRecords[nis].note = '';
             }
 
-            // SIMPAN KE FIREBASE (Di sinilah collection 'attendance' otomatis terbuat!)
+            // SIMPAN KE FIREBASE
             const docId = `${today}_${currentActivityId}`;
             const updateData = {};
             updateData[`records.${nis}.present`] = isChecked;
