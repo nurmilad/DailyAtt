@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rekap Bulanan - Daily Activity Attendace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        
+        /* Styling untuk kolom yang terkunci (Sticky) */
+        .sticky-col-left-1 { position: sticky; left: 0; z-index: 20; }
+        .sticky-col-left-2 { position: sticky; left: 60px; z-index: 20; }
+        .sticky-col-right { position: sticky; right: 0; z-index: 20; }
+        
+        /* Header Sticky */
+        .sticky-header { position: sticky; top: 0; z-index: 30; }
+        .sticky-header-corner { position: sticky; top: 0; z-index: 40; }
+    </style>
+</head>
+<body class="bg-gray-50 h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm z-10 sticky top-0">
+        <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex flex-col">
+                <h1 class="text-lg font-bold text-gray-800 leading-tight">Rekap Bulanan</h1>
+                <span class="text-xs text-gray-500 font-medium tracking-wide">NBS Student</span>
+            </div>
+            <div class="flex gap-2">
+                <a href="index.html" class="bg-gray-100 hover:bg-gray-200 text-gray-700 w-10 h-10 rounded-full flex items-center justify-center shadow-sm transition-colors" title="Kembali ke Daftar Hadir">
+                    <i class="fas fa-clipboard-list"></i>
+                </a>
+                <a href="admin.html" class="bg-blue-600 hover:bg-blue-700 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-colors" title="Menu Admin">
+                    <i class="fas fa-user-shield"></i>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Konten Utama -->
+    <main class="flex-1 flex flex-col max-w-md mx-auto w-full p-4 overflow-hidden">
+        
+        <!-- Filter Section -->
+        <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 mb-4 flex flex-col gap-3">
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Pilih Kegiatan</label>
+                <select id="activitySelect" class="w-full p-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="">-- Pilih Kegiatan --</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Bulan</label>
+                    <select id="monthSelect" class="w-full p-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="01">Januari</option>
+                        <option value="02">Februari</option>
+                        <option value="03">Maret</option>
+                        <option value="04">April</option>
+                        <option value="05">Mei</option>
+                        <option value="06">Juni</option>
+                        <option value="07">Juli</option>
+                        <option value="08">Agustus</option>
+                        <option value="09">September</option>
+                        <option value="10">Oktober</option>
+                        <option value="11">November</option>
+                        <option value="12">Desember</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Tahun</label>
+                    <select id="yearSelect" class="w-full p-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <!-- Diisi otomatis oleh JavaScript -->
+                    </select>
+                </div>
+            </div>
+            <button onclick="loadAttendanceData()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm mt-1">
+                <i class="fas fa-search mr-1"></i> Tampilkan Rekap
+            </button>
+        </div>
+
+        <!-- Tabel Rekap -->
+        <div class="flex-1 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col relative">
+            <div id="tableContainer" class="flex-1 overflow-auto">
+                <table class="w-full text-center border-collapse text-xs">
+                    <thead class="bg-gray-100 text-gray-700">
+                        <tr id="tableHeaderRow">
+                            <!-- Header akan di-generate oleh JavaScript -->
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr>
+                            <td colspan="4" class="p-6 text-center text-gray-500">
+                                Silakan pilih Kegiatan, Bulan, dan Tahun, lalu klik "Tampilkan Rekap".
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        // 1. Konfigurasi Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDQKoko-TUh86oZl-T84blF2R937NnZ68Q",
+            authDomain: "quiz-b09cb.firebaseapp.com",
+            projectId: "quiz-b09cb",
+            storageBucket: "quiz-b09cb.firebasestorage.app",
+            messagingSenderId: "891983424435",
+            appId: "1:891983424435:web:25943b3c2831a45b4ff9c6"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // 2. Isi Dropdown Tahun (3 tahun terakhir sampai 1 tahun ke depan)
+        const currentYear = new Date().getFullYear();
+        const yearSelect = document.getElementById('yearSelect');
+        for (let y = currentYear - 2; y <= currentYear + 1; y++) {
+            const option = document.createElement('option');
+            option.value = y;
+            option.textContent = y;
+            if (y === currentYear) option.selected = true;
+            yearSelect.appendChild(option);
+        }
+
+        // 3. Ambil Data Kegiatan
+        db.collection('activities').orderBy('name').onSnapshot(snapshot => {
+            const select = document.getElementById('activitySelect');
+            select.innerHTML = '<option value="">-- Pilih Kegiatan --</option>';
+            snapshot.forEach(doc => {
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = doc.data().name;
+                select.appendChild(option);
+            });
+        });
+
+        // 4. Fungsi Utama: Memuat Data Rekap
+        async function loadAttendanceData() {
+            const activityId = document.getElementById('activitySelect').value;
+            const month = document.getElementById('monthSelect').value;
+            const year = document.getElementById('yearSelect').value;
+            const tableBody = document.getElementById('tableBody');
+            const tableHeaderRow = document.getElementById('tableHeaderRow');
+
+            if (!activityId) {
+                alert("Silakan pilih Kegiatan terlebih dahulu!");
+                return;
+            }
+
+            // Tampilkan loading
+            tableHeaderRow.innerHTML = '<th class="p-3 sticky-col-left-1 bg-gray-100 border-r">NIS</th><th class="p-3 sticky-col-left-2 bg-gray-100 border-r text-left">NAMA</th><th class="p-3 sticky-col-right bg-gray-100 border-l">TOT</th>';
+            tableBody.innerHTML = '<tr><td colspan="3" class="p-6 text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Memuat data...</td></tr>';
+
+            try {
+                // A. Ambil Data Murid Aktif
+                const studentsSnapshot = await db.collection('students').where('status', '==', 'Aktif').get();
+                let students = studentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                students.sort((a, b) => (a.nis || '').localeCompare(b.nis || ''));
+
+                if (students.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="3" class="p-6 text-center text-gray-500">Belum ada data murid aktif.</td></tr>';
+                    return;
+                }
+
+                // B. Hitung Jumlah Hari dalam Bulan
+                const daysInMonth = new Date(year, month, 0).getDate();
+
+                // C. Buat Header Tabel Dinamis (Tanggal 1 s.d. akhir bulan)
+                let headerHtml = `
+                    <th class="p-2 sticky-header-corner sticky-col-left-1 bg-gray-100 border-r border-b w-12">NIS</th>
+                    <th class="p-2 sticky-header-corner sticky-col-left-2 bg-gray-100 border-r border-b text-left w-28">NAMA</th>
+                `;
+                for (let d = 1; d <= daysInMonth; d++) {
+                    headerHtml += `<th class="p-2 sticky-header bg-gray-100 border-r border-b w-8 min-w-[2rem]">${d}</th>`;
+                }
+                headerHtml += `<th class="p-2 sticky-header-corner sticky-col-right bg-gray-100 border-l border-b w-10">TOT</th>`;
+                tableHeaderRow.innerHTML = headerHtml;
+
+                // D. Ambil Data Presensi untuk Setiap Hari (Menggunakan Promise.all)
+                const attendanceData = {}; // Format: { studentId: { day: { present, note } } }
+                
+                const promises = [];
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dayStr = String(d).padStart(2, '0');
+                    const docId = `${year}-${month}-${dayStr}_${activityId}`;
+                    
+                    promises.push(
+                        db.collection('attendance').doc(docId).get().then(doc => {
+                            if (doc.exists) {
+                                const records = doc.data().records || {};
+                                for (const [studentId, data] of Object.entries(records)) {
+                                    if (!attendanceData[studentId]) attendanceData[studentId] = {};
+                                    attendanceData[studentId][d] = data;
+                                }
+                            }
+                        }).catch(err => console.log(`Gagal ambil hari ${d}:`, err))
+                    );
+                }
+
+                // Tunggu semua data presensi selesai diambil
+                await Promise.all(promises);
+
+                // E. Render Baris Tabel
+                let bodyHtml = '';
+                students.forEach(student => {
+                    let totalHadir = 0;
+                    bodyHtml += '<tr class="hover:bg-gray-50 border-b border-gray-100">';
+                    
+                    // Kolom NIS & NAMA (Sticky)
+                    bodyHtml += `<td class="p-2 sticky-col-left-1 bg-white border-r font-semibold text-gray-600">${student.nis || '-'}</td>`;
+                    bodyHtml += `<td class="p-2 sticky-col-left-2 bg-white border-r text-left font-medium text-gray-800 truncate max-w-[7rem]">${student.nama}</td>`;
+
+                    // Kolom Tanggal 1 s.d. akhir bulan
+                    for (let d = 1; d <= daysInMonth; d++) {
+                        let cellContent = '<span class="text-gray-300">-</span>';
+                        
+                        if (attendanceData[student.id] && attendanceData[student.id][d]) {
+                            const record = attendanceData[student.id][d];
+                            if (record.present) {
+                                cellContent = '<i class="fas fa-check text-green-500 text-sm"></i>';
+                                totalHadir++;
+                            } else if (record.note) {
+                                cellContent = `<span class="text-red-500 font-bold">${record.note}</span>`;
+                            }
+                        }
+                        
+                        bodyHtml += `<td class="p-2 border-r text-center">${cellContent}</td>`;
+                    }
+
+                    // Kolom Total (Sticky)
+                    bodyHtml += `<td class="p-2 sticky-col-right bg-white border-l font-bold text-blue-600">${totalHadir}</td>`;
+                    bodyHtml += '</tr>';
+                });
+
+                tableBody.innerHTML = bodyHtml;
+
+            } catch (error) {
+                console.error("Error memuat rekap: ", error);
+                tableBody.innerHTML = '<tr><td colspan="3" class="p-6 text-center text-red-500">Terjadi kesalahan saat memuat data.</td></tr>';
+            }
+        }
+    </script>
+</body>
+</html>
