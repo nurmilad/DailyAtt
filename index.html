@@ -118,11 +118,7 @@
             studentsData.forEach(student => {
                 const record = attendanceRecords[student.id] || { present: false, note: '' };
                 
-                // ==========================================================
-                // LOGIKA KETERANGAN YANG BARU:
-                // Jika Hadir (Ceklis Aktif) = Keterangan TERKUNCI (disabled)
-                // Jika Tidak Hadir (Ceklis Mati) = Keterangan TERBUKA (bisa dipilih)
-                // ==========================================================
+                // LOGIKA KETERANGAN: Jika Hadir (Ceklis Aktif) = TERKUNCI. Jika Tidak Hadir = TERBUKA.
                 const isKetDisabled = record.present; 
 
                 const row = document.createElement('div');
@@ -163,16 +159,24 @@
             }
         });
 
+        // ==========================================================
+        // PERBAIKAN UTAMA: Mencegah data lokal tertimpa data server yang belum update
+        // ==========================================================
         function listenToAttendance() {
             if (!currentActivityId) return;
             const docId = `${today}_${currentActivityId}`;
             
             db.collection('attendance').doc(docId).onSnapshot(doc => {
                 if (doc.exists) {
-                    const serverRecords = doc.data().records || {};
-                    attendanceRecords = { ...attendanceRecords, ...serverRecords };
+                    // Hanya timpa data lokal JIKA tidak ada proses simpan yang tertunda (pending writes)
+                    if (!doc.metadata.hasPendingWrites) {
+                        attendanceRecords = doc.data().records || {};
+                        renderStudentList();
+                    }
+                } else {
+                    // Jika dokumen belum ada, biarkan data lokal (kosong)
+                    renderStudentList();
                 }
-                renderStudentList();
             });
         }
 
@@ -183,22 +187,26 @@
             if (!attendanceRecords[id]) attendanceRecords[id] = {};
             attendanceRecords[id].present = isChecked;
             
-            // ==========================================================
-            // PERUBAHAN LOGIKA SIMPAN:
             // Jika Hadir (Ceklis Aktif), maka hapus isi keterangan.
-            // Jika Tidak Hadir (Ceklis Mati), biarkan kosong agar user bisa pilih.
-            // ==========================================================
             if (isChecked) {
                 attendanceRecords[id].note = '';
             }
 
+            // Render UI segera (Optimistic UI) agar terasa responsif
             renderStudentList();
 
             const docId = `${today}_${currentActivityId}`;
-            const updateData = {};
-            updateData[`records.${id}.present`] = isChecked;
-            updateData[`records.${id}.note`] = attendanceRecords[id].note;
-            updateData[`records.${id}.updatedAt`] = firebase.firestore.FieldValue.serverTimestamp();
+            
+            // Menggunakan objek bersarang agar lebih aman dari tabrakan data
+            const updateData = {
+                records: {
+                    [id]: {
+                        present: isChecked,
+                        note: attendanceRecords[id].note,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }
+                }
+            };
 
             db.collection('attendance').doc(docId).set(updateData, { merge: true })
                 .then(() => console.log(`Presensi ${id} tersimpan`))
@@ -213,9 +221,15 @@
             attendanceRecords[id].note = note;
 
             const docId = `${today}_${currentActivityId}`;
-            const updateData = {};
-            updateData[`records.${id}.note`] = note;
-            updateData[`records.${id}.updatedAt`] = firebase.firestore.FieldValue.serverTimestamp();
+            
+            const updateData = {
+                records: {
+                    [id]: {
+                        note: note,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }
+                }
+            };
 
             db.collection('attendance').doc(docId).set(updateData, { merge: true })
                 .then(() => console.log(`Keterangan ${id} tersimpan`))
