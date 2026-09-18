@@ -116,11 +116,14 @@
             container.innerHTML = '';
             
             studentsData.forEach(student => {
-                // PERBAIKAN: Menggunakan ID Murid unik dari Firebase
                 const record = attendanceRecords[student.id] || { present: false, note: '' };
                 
-                // LOGIKA KETERANGAN: Jika Hadir (Ceklis), maka Ket AKTIF. Jika Tidak, Ket NONAKTIF.
-                const isKetDisabled = !record.present; 
+                // ==========================================================
+                // LOGIKA KETERANGAN YANG BARU:
+                // Jika Hadir (Ceklis Aktif) = Keterangan TERKUNCI (disabled)
+                // Jika Tidak Hadir (Ceklis Mati) = Keterangan TERBUKA (bisa dipilih)
+                // ==========================================================
+                const isKetDisabled = record.present; 
 
                 const row = document.createElement('div');
                 row.className = 'grid grid-cols-12 gap-1 p-2 items-center hover:bg-gray-50 transition-colors';
@@ -152,7 +155,6 @@
         document.getElementById('activitySelect').addEventListener('change', function(e) {
             currentActivityId = e.target.value;
             if (currentActivityId) {
-                // Reset data lokal saat ganti kegiatan
                 attendanceRecords = {}; 
                 listenToAttendance();
             } else {
@@ -161,43 +163,39 @@
             }
         });
 
-        // Dengarkan Perubahan Data dari Firebase
         function listenToAttendance() {
             if (!currentActivityId) return;
             const docId = `${today}_${currentActivityId}`;
             
             db.collection('attendance').doc(docId).onSnapshot(doc => {
                 if (doc.exists) {
-                    // Gabungkan data dari Firebase dengan data lokal yang mungkin belum tersinkron
                     const serverRecords = doc.data().records || {};
-                    // Kita timpa data lokal dengan data server, TAPI jangan hapus data lokal yang belum terkirim
-                    // Untuk amannya, kita langsung gunakan data server jika ada.
                     attendanceRecords = { ...attendanceRecords, ...serverRecords };
                 }
                 renderStudentList();
             });
         }
 
-        // FUNGSI UTAMA: Toggle Presensi (Ceklis) dengan Anti-Tabrakan
+        // FUNGSI UTAMA: Toggle Presensi (Ceklis)
         function togglePresence(id, isChecked) {
             if (!currentActivityId) return;
 
-            // 1. Update Memori Lokal Segera (Optimistic UI)
             if (!attendanceRecords[id]) attendanceRecords[id] = {};
             attendanceRecords[id].present = isChecked;
             
-            // Jika tidak hadir, kosongkan keterangan
-            if (!isChecked) {
+            // ==========================================================
+            // PERUBAHAN LOGIKA SIMPAN:
+            // Jika Hadir (Ceklis Aktif), maka hapus isi keterangan.
+            // Jika Tidak Hadir (Ceklis Mati), biarkan kosong agar user bisa pilih.
+            // ==========================================================
+            if (isChecked) {
                 attendanceRecords[id].note = '';
             }
 
-            // 2. Render Ulang UI Seketika (Biar tidak perlu nunggu Firebase)
             renderStudentList();
 
-            // 3. Kirim ke Firebase di Background
             const docId = `${today}_${currentActivityId}`;
             const updateData = {};
-            // PENTING: Gunakan ID Murid sebagai kunci
             updateData[`records.${id}.present`] = isChecked;
             updateData[`records.${id}.note`] = attendanceRecords[id].note;
             updateData[`records.${id}.updatedAt`] = firebase.firestore.FieldValue.serverTimestamp();
@@ -212,10 +210,8 @@
             if (!currentActivityId) return;
             if (!attendanceRecords[id]) attendanceRecords[id] = { present: false };
 
-            // 1. Update Memori Lokal
             attendanceRecords[id].note = note;
 
-            // 2. Kirim ke Firebase
             const docId = `${today}_${currentActivityId}`;
             const updateData = {};
             updateData[`records.${id}.note`] = note;
