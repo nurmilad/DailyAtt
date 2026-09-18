@@ -10,12 +10,34 @@
     
     <style>
         body { font-family: 'Inter', sans-serif; }
-        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 600; }
         .sortable { cursor: pointer; user-select: none; transition: background-color 0.15s; }
         .sortable:hover { background-color: #e5e7eb; }
         .sortable .sort-icon { opacity: 0.3; margin-left: 4px; font-size: 10px; }
         .sortable.active-sort .sort-icon { opacity: 1; color: #2563eb; }
+
+        /* Sticky Table untuk Edit Att */
+        .edit-att-table { border-collapse: separate; border-spacing: 0; }
+        .edit-att-table th, .edit-att-table td {
+            padding: 4px;
+            border-right: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: center;
+            font-size: 11px;
+            background: white;
+        }
+        .edit-att-table thead th { background: #f3f4f6; }
+        .sticky-nis { position: sticky; left: 0; z-index: 5; background: white !important; }
+        .sticky-nama { position: sticky; left: 48px; z-index: 5; background: white !important; }
+        .sticky-tot { position: sticky; right: 0; z-index: 5; background: white !important; border-left: 2px solid #d1d5db; }
+        .sticky-header-nis { position: sticky; top: 0; left: 0; z-index: 20; background: #f3f4f6 !important; }
+        .sticky-header-nama { position: sticky; top: 0; left: 48px; z-index: 20; background: #f3f4f6 !important; }
+        .sticky-header-tot { position: sticky; top: 0; right: 0; z-index: 20; background: #f3f4f6 !important; border-left: 2px solid #d1d5db; }
+        .sticky-header { position: sticky; top: 0; z-index: 10; background: #f3f4f6 !important; }
+        .edit-cell { cursor: pointer; transition: background-color 0.15s; }
+        .edit-cell:hover { background-color: #dbeafe !important; }
     </style>
 </head>
 <body class="bg-gray-50 h-screen flex flex-col overflow-hidden">
@@ -63,15 +85,18 @@
             </div>
         </header>
 
-        <div class="bg-white border-b border-gray-200 max-w-md mx-auto w-full flex justify-around text-sm text-gray-500">
-            <button onclick="switchTab('activities')" id="tab-activities" class="flex-1 py-3 tab-active transition-colors">
+        <div class="bg-white border-b border-gray-200 max-w-md mx-auto w-full flex justify-around text-xs text-gray-500">
+            <button onclick="switchTab('activities')" id="tab-activities" class="flex-1 py-2 tab-active transition-colors">
                 <i class="fas fa-calendar-check block mb-1"></i> Kegiatan
             </button>
-            <button onclick="switchTab('students')" id="tab-students" class="flex-1 py-3 transition-colors">
+            <button onclick="switchTab('students')" id="tab-students" class="flex-1 py-2 transition-colors">
                 <i class="fas fa-users block mb-1"></i> Murid
             </button>
-            <button onclick="switchTab('settings')" id="tab-settings" class="flex-1 py-3 transition-colors">
-                <i class="fas fa-cog block mb-1"></i> Keterangan
+            <button onclick="switchTab('settings')" id="tab-settings" class="flex-1 py-2 transition-colors">
+                <i class="fas fa-cog block mb-1"></i> Ket.
+            </button>
+            <button onclick="switchTab('editatt')" id="tab-editatt" class="flex-1 py-2 transition-colors">
+                <i class="fas fa-edit block mb-1"></i> Edit Att
             </button>
         </div>
 
@@ -104,7 +129,6 @@
                     </div>
                 </div>
                 
-                <!-- Tabel Murid -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <table class="w-full text-left border-collapse">
                         <thead class="bg-gray-100 text-xs text-gray-600 border-b border-gray-200">
@@ -140,6 +164,66 @@
                 </div>
             </div>
 
+            <!-- TAB 4: EDIT ATTENDANCE (HISTORIS) -->
+            <div id="content-editatt" class="hidden">
+                <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 mb-3 flex flex-col gap-2">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Kegiatan</label>
+                        <select id="editActivitySelect" class="w-full p-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="">-- Pilih Kegiatan --</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Bulan</label>
+                            <select id="editMonthSelect" class="w-full p-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                <option value="01">Januari</option>
+                                <option value="02">Februari</option>
+                                <option value="03">Maret</option>
+                                <option value="04">April</option>
+                                <option value="05">Mei</option>
+                                <option value="06">Juni</option>
+                                <option value="07">Juli</option>
+                                <option value="08">Agustus</option>
+                                <option value="09">September</option>
+                                <option value="10">Oktober</option>
+                                <option value="11">November</option>
+                                <option value="12">Desember</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Tahun</label>
+                            <select id="editYearSelect" class="w-full p-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="loadEditAttendance()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm">
+                        <i class="fas fa-search mr-1"></i> Tampilkan
+                    </button>
+                </div>
+
+                <p class="text-xs text-gray-500 mb-2 italic">
+                    <i class="fas fa-info-circle mr-1"></i> Klik sel untuk mengubah status. Klik checkbox di header tanggal untuk centang semua (kecuali murid tidak aktif).
+                </p>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div id="editTableContainer" class="overflow-auto" style="max-height: 55vh;">
+                        <table id="editAttTable" class="edit-att-table w-full">
+                            <thead>
+                                <tr id="editTableHeader">
+                                    <th class="sticky-header-nis text-xs" style="min-width:48px; width:48px;">NIS</th>
+                                    <th class="sticky-header-nama text-xs text-left" style="min-width:96px; width:96px;">NAMA</th>
+                                    <th class="sticky-header text-xs">Pilih</th>
+                                </tr>
+                            </thead>
+                            <tbody id="editTableBody">
+                                <tr><td colspan="3" class="p-6 text-center text-gray-400 text-sm">Silakan pilih Kegiatan, Bulan, dan Tahun.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -169,14 +253,9 @@
     <div id="importModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
             <h3 class="font-bold text-gray-800 text-lg mb-2">Impor Data Murid</h3>
-            <p class="text-xs text-gray-500 mb-4">Format: <b>NIS, Nama</b> (satu murid per baris). Contoh:</p>
-            <div class="bg-gray-50 p-2 rounded-lg mb-3 text-xs text-gray-600 font-mono">
-                2024001, YUDI<br>
-                2024002, YUNUS<br>
-                2024003, HERA
-            </div>
+            <p class="text-xs text-gray-500 mb-4">Format: <b>NIS, Nama</b> (satu murid per baris, dipisahkan koma).</p>
             
-            <textarea id="importData" rows="6" placeholder="Paste data di sini..." 
+            <textarea id="importData" rows="8" placeholder="Paste data di sini..." 
                 class="w-full p-2 border border-gray-300 rounded-lg mb-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
             
             <div class="flex gap-2">
@@ -187,6 +266,22 @@
                     <i class="fas fa-upload mr-1"></i> Impor
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL CELL EDITOR (Bottom Sheet) ================= -->
+    <div id="cellEditorModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end justify-center">
+        <div class="bg-white w-full max-w-md rounded-t-2xl p-4 pb-6 shadow-2xl">
+            <div class="text-center mb-3">
+                <div class="text-sm font-semibold text-gray-800" id="cellEditorTitle">Edit Presensi</div>
+                <div class="text-xs text-gray-500 mt-1" id="cellEditorInfo"></div>
+            </div>
+            
+            <div id="cellEditorOptions" class="grid grid-cols-3 gap-2 mb-3"></div>
+            
+            <button onclick="closeCellEditor()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold transition-colors">
+                Batal
+            </button>
         </div>
     </div>
 
@@ -210,6 +305,17 @@
 
         // 2. Status Login
         window.onload = function() {
+            // Isi dropdown tahun
+            const currentYear = new Date().getFullYear();
+            const yearSelect = document.getElementById('editYearSelect');
+            for (let y = currentYear - 2; y <= currentYear + 1; y++) {
+                const option = document.createElement('option');
+                option.value = y;
+                option.textContent = y;
+                if (y === currentYear) option.selected = true;
+                yearSelect.appendChild(option);
+            }
+
             if (sessionStorage.getItem('isAdmin') === 'true') {
                 showDashboard();
             }
@@ -261,6 +367,7 @@
             listenActivities();
             listenStudents();
             listenNotes();
+            listenActivitiesForEditAtt();
         }
 
         // 4. Navigasi Tab
@@ -303,6 +410,19 @@
             });
         }
 
+        function listenActivitiesForEditAtt() {
+            db.collection('activities').orderBy('name').onSnapshot(snapshot => {
+                const select = document.getElementById('editActivitySelect');
+                select.innerHTML = '<option value="">-- Pilih Kegiatan --</option>';
+                snapshot.forEach(doc => {
+                    const option = document.createElement('option');
+                    option.value = doc.id;
+                    option.textContent = doc.data().name;
+                    select.appendChild(option);
+                });
+            });
+        }
+
         function addActivity() {
             const name = prompt("Masukkan Nama Kegiatan Baru:");
             if (name && name.trim() !== "") {
@@ -332,16 +452,12 @@
             }
         }
 
-        // ==========================================================
-        // ================= CRUD MURID (DENGAN SORTIR) ============
-        // ==========================================================
-        let allStudents = [];         // Menyimpan semua data murid
-        let sortColumn = 'nis';       // Kolom default untuk sortir
-        let sortDirection = 'asc';    // Arah sortir default (asc/desc)
+        // ================= CRUD MURID =================
+        let allStudents = [];
+        let sortColumn = 'nis';
+        let sortDirection = 'asc';
 
         function listenStudents() {
-            // Tetap ambil semua data, tapi jangan langsung di-render.
-            // Simpan ke variabel allStudents lalu panggil render.
             db.collection('students').onSnapshot(snapshot => {
                 allStudents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderStudentTable();
@@ -350,10 +466,8 @@
 
         function sortBy(column) {
             if (sortColumn === column) {
-                // Jika kolom yang sama diklik, balik arahnya
                 sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
             } else {
-                // Jika kolom berbeda, ganti kolom dan reset ke asc
                 sortColumn = column;
                 sortDirection = 'asc';
             }
@@ -362,21 +476,21 @@
         }
 
         function updateSortIcons() {
-            // Reset semua ikon
             document.querySelectorAll('.sortable').forEach(th => {
                 th.classList.remove('active-sort');
                 const icon = th.querySelector('.sort-icon');
-                icon.className = 'fas fa-sort sort-icon';
+                if (icon) icon.className = 'fas fa-sort sort-icon';
             });
             
-            // Set ikon pada kolom aktif
             const activeTh = document.getElementById(`th-${sortColumn}`);
             if (activeTh) {
                 activeTh.classList.add('active-sort');
                 const icon = activeTh.querySelector('.sort-icon');
-                icon.className = sortDirection === 'asc' 
-                    ? 'fas fa-sort-up sort-icon' 
-                    : 'fas fa-sort-down sort-icon';
+                if (icon) {
+                    icon.className = sortDirection === 'asc' 
+                        ? 'fas fa-sort-up sort-icon' 
+                        : 'fas fa-sort-down sort-icon';
+                }
             }
         }
 
@@ -389,14 +503,12 @@
                 return;
             }
 
-            // Lakukan sortir pada salinan array (agar data asli tidak berubah)
             const sortedStudents = [...allStudents].sort((a, b) => {
                 const valA = (a[sortColumn] || '').toString().toLowerCase();
                 const valB = (b[sortColumn] || '').toString().toLowerCase();
                 
                 let comparison = 0;
                 if (sortColumn === 'nis') {
-                    // NIS mungkin berupa angka atau string; gunakan localeCompare dengan numeric
                     comparison = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
                 } else {
                     comparison = valA.localeCompare(valB);
@@ -614,9 +726,14 @@
                     div.className = 'bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex justify-between items-center';
                     div.innerHTML = `
                         <span class="font-bold text-gray-700 text-lg">${note}</span>
-                        <button onclick="deleteNote(${index})" class="text-red-500 hover:text-red-700 p-1">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                        <div class="flex gap-2">
+                            <button onclick="editNote(${index})" class="text-blue-500 hover:text-blue-700 p-1">
+                                <i class="fas fa-pencil-alt"></i>
+                            </button>
+                            <button onclick="deleteNote(${index})" class="text-red-500 hover:text-red-700 p-1">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     `;
                     container.appendChild(div);
                 });
@@ -646,6 +763,35 @@
               .catch(err => alert("Gagal menambahkan: " + err));
         }
 
+        function editNote(index) {
+            db.collection('settings').doc('notes').get().then(doc => {
+                if (!doc.exists) return;
+                let notes = doc.data().list || [];
+                const oldValue = notes[index];
+                if (oldValue === undefined) return;
+                
+                const newValue = prompt("Edit Kode Keterangan:", oldValue);
+                if (!newValue) return;
+                
+                const cleanNote = newValue.trim().toUpperCase();
+                
+                if (!/^[A-Z]{1,2}$/.test(cleanNote)) {
+                    alert("Format salah! Hanya boleh 1-2 huruf kapital.");
+                    return;
+                }
+                
+                if (cleanNote !== oldValue && notes.includes(cleanNote)) {
+                    alert("Kode keterangan sudah ada!");
+                    return;
+                }
+                
+                notes[index] = cleanNote;
+                db.collection('settings').doc('notes').set({ list: notes })
+                  .then(() => alert("Keterangan berhasil diupdate!"))
+                  .catch(err => alert("Gagal mengupdate: " + err));
+            });
+        }
+
         function deleteNote(index) {
             if (confirm("Yakin ingin menghapus kode keterangan ini?")) {
                 db.collection('settings').doc('notes').get().then(doc => {
@@ -656,6 +802,246 @@
                     }
                 }).catch(err => alert("Gagal menghapus: " + err));
             }
+        }
+
+        // ==========================================================
+        // ============ TAB EDIT ATT (HISTORIS) =====================
+        // ==========================================================
+        let editStudentsData = [];      // Semua murid (aktif & tidak aktif)
+        let editAttendanceData = {};     // { studentId: { day: {present, note} } }
+        let editCurrentActivityId = null;
+        let editCurrentMonth = null;
+        let editCurrentYear = null;
+        let editDaysInMonth = 31;
+        let editNoteOptions = [];
+        let editSelectedCellData = null;
+
+        async function loadEditAttendance() {
+            const activityId = document.getElementById('editActivitySelect').value;
+            const month = document.getElementById('editMonthSelect').value;
+            const year = document.getElementById('editYearSelect').value;
+
+            if (!activityId) {
+                alert("Silakan pilih Kegiatan terlebih dahulu!");
+                return;
+            }
+
+            editCurrentActivityId = activityId;
+            editCurrentMonth = month;
+            editCurrentYear = year;
+            editDaysInMonth = new Date(year, month, 0).getDate();
+
+            // Show loading
+            document.getElementById('editTableHeader').innerHTML = '<th class="sticky-header-nis">NIS</th><th class="sticky-header-nama">NAMA</th><th class="sticky-header">Loading...</th>';
+            document.getElementById('editTableBody').innerHTML = '<tr><td colspan="3" class="p-6 text-center text-gray-400 text-sm"><i class="fas fa-spinner fa-spin mr-2"></i>Memuat data...</td></tr>';
+
+            try {
+                // 1. Ambil SEMUA murid (aktif dan tidak aktif)
+                const studentsSnap = await db.collection('students').get();
+                editStudentsData = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                editStudentsData.sort((a, b) => (a.nis || '').localeCompare(b.nis || '', undefined, { numeric: true, sensitivity: 'base' }));
+
+                // 2. Ambil note options
+                const notesDoc = await db.collection('settings').doc('notes').get();
+                editNoteOptions = notesDoc.exists ? (notesDoc.data().list || []) : [];
+
+                // 3. Ambil semua data attendance untuk bulan ini (paralel)
+                editAttendanceData = {};
+                const promises = [];
+                for (let d = 1; d <= editDaysInMonth; d++) {
+                    const dayStr = String(d).padStart(2, '0');
+                    const docId = `${year}-${month}-${dayStr}_${activityId}`;
+                    promises.push(
+                        db.collection('attendance').doc(docId).get().then(doc => {
+                            if (doc.exists) {
+                                const records = doc.data().records || {};
+                                for (const [sid, rec] of Object.entries(records)) {
+                                    if (!editAttendanceData[sid]) editAttendanceData[sid] = {};
+                                    editAttendanceData[sid][d] = rec;
+                                }
+                            }
+                        }).catch(err => console.log(`Hari ${d}:`, err))
+                    );
+                }
+                await Promise.all(promises);
+
+                renderEditTable();
+            } catch (err) {
+                console.error(err);
+                document.getElementById('editTableBody').innerHTML = '<tr><td colspan="3" class="p-6 text-center text-red-500 text-sm">Gagal memuat data.</td></tr>';
+            }
+        }
+
+        function renderEditTable() {
+            const thead = document.getElementById('editTableHeader');
+            const tbody = document.getElementById('editTableBody');
+
+            if (editStudentsData.length === 0) {
+                thead.innerHTML = '';
+                tbody.innerHTML = '<tr><td class="p-6 text-center text-gray-400 text-sm">Belum ada data murid.</td></tr>';
+                return;
+            }
+
+            // ===== Build Header =====
+            let headerHtml = `<th class="sticky-header-nis text-xs" style="min-width:48px; width:48px;">NIS</th>`;
+            headerHtml += `<th class="sticky-header-nama text-xs text-left" style="min-width:96px; width:96px;">NAMA</th>`;
+
+            const activeStudents = editStudentsData.filter(s => s.status === 'Aktif');
+
+            for (let d = 1; d <= editDaysInMonth; d++) {
+                const allPresent = activeStudents.length > 0 && activeStudents.every(s => 
+                    editAttendanceData[s.id] && editAttendanceData[s.id][d] && editAttendanceData[s.id][d].present
+                );
+                headerHtml += `<th class="sticky-header text-xs" style="min-width:32px; width:32px;">
+                    <div class="flex flex-col items-center gap-0.5">
+                        <span>${d}</span>
+                        <input type="checkbox" ${allPresent ? 'checked' : ''} onchange="toggleColumnCheckAll(${d}, this.checked)" class="w-3 h-3 cursor-pointer">
+                    </div>
+                </th>`;
+            }
+
+            headerHtml += `<th class="sticky-header-tot text-xs" style="min-width:36px; width:36px;">TOT</th>`;
+            thead.innerHTML = headerHtml;
+
+            // ===== Build Body =====
+            let bodyHtml = '';
+            editStudentsData.forEach(s => {
+                const isAktif = s.status === 'Aktif';
+                const rowBg = isAktif ? '' : 'bg-gray-50';
+                const textColor = isAktif ? 'text-gray-800' : 'text-gray-400';
+                
+                let total = 0;
+                bodyHtml += `<tr class="${rowBg}">`;
+                bodyHtml += `<td class="sticky-nis text-xs font-semibold ${textColor}">${s.nis || '-'}</td>`;
+                bodyHtml += `<td class="sticky-nama text-xs font-medium ${textColor} truncate" style="max-width:96px;">${s.nama || '-'}${isAktif ? '' : ' <span class="text-red-400 text-[9px]">(off)</span>'}</td>`;
+
+                for (let d = 1; d <= editDaysInMonth; d++) {
+                    const rec = (editAttendanceData[s.id] && editAttendanceData[s.id][d]) || null;
+                    let display = '<span class="text-gray-300">-</span>';
+                    if (rec) {
+                        if (rec.present) {
+                            display = '<i class="fas fa-check text-green-500"></i>';
+                            total++;
+                        } else if (rec.note) {
+                            display = `<span class="text-red-500 font-bold">${rec.note}</span>`;
+                        }
+                    }
+                    const escapedNama = (s.nama || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                    bodyHtml += `<td class="edit-cell" data-sid="${s.id}" data-day="${d}" data-nama="${escapedNama}" onclick="openCellEditor(this)">${display}</td>`;
+                }
+
+                bodyHtml += `<td class="sticky-tot text-xs font-bold text-blue-600">${total}</td>`;
+                bodyHtml += '</tr>';
+            });
+
+            tbody.innerHTML = bodyHtml;
+        }
+
+        function toggleColumnCheckAll(day, checked) {
+            if (!editCurrentActivityId) return;
+
+            const dayStr = String(day).padStart(2, '0');
+            const docId = `${editCurrentYear}-${editCurrentMonth}-${dayStr}_${editCurrentActivityId}`;
+
+            // Update memory + build update object
+            const update = {};
+            editStudentsData.forEach(s => {
+                if (s.status !== 'Aktif') return; // Skip murid tidak aktif
+                
+                if (!editAttendanceData[s.id]) editAttendanceData[s.id] = {};
+                editAttendanceData[s.id][day] = { present: checked, note: '' };
+                
+                update[`records.${s.id}.present`] = checked;
+                update[`records.${s.id}.note`] = '';
+                update[`records.${s.id}.updatedAt`] = firebase.firestore.FieldValue.serverTimestamp();
+            });
+
+            renderEditTable();
+
+            db.collection('attendance').doc(docId).set(update, { merge: true })
+                .then(() => console.log(`Kolom tanggal ${day} tersimpan`))
+                .catch(err => console.error("Gagal menyimpan: ", err));
+        }
+
+        function openCellEditor(td) {
+            const sid = td.dataset.sid;
+            const day = parseInt(td.dataset.day);
+            const nama = td.dataset.nama;
+
+            editSelectedCellData = { sid, day };
+
+            document.getElementById('cellEditorInfo').innerHTML = `<b>${nama}</b> · Tanggal <b>${day}</b>`;
+
+            const opts = document.getElementById('cellEditorOptions');
+            opts.innerHTML = '';
+
+            // Tombol Hadir
+            const hadirBtn = document.createElement('button');
+            hadirBtn.className = 'bg-green-100 text-green-700 py-3 rounded-lg text-sm font-semibold hover:bg-green-200 transition-colors';
+            hadirBtn.innerHTML = '<i class="fas fa-check mr-1"></i> Hadir';
+            hadirBtn.onclick = () => setCellOption('present', '');
+            opts.appendChild(hadirBtn);
+
+            // Tombol Keterangan
+            editNoteOptions.forEach(code => {
+                const btn = document.createElement('button');
+                btn.className = 'bg-red-100 text-red-700 py-3 rounded-lg text-sm font-semibold hover:bg-red-200 transition-colors';
+                btn.textContent = code;
+                btn.onclick = () => setCellOption('note', code);
+                opts.appendChild(btn);
+            });
+
+            // Tombol Kosongkan
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'bg-gray-100 text-gray-700 py-3 rounded-lg text-sm font-semibold hover:bg-gray-200 transition-colors';
+            clearBtn.innerHTML = '<i class="fas fa-times mr-1"></i> Kosong';
+            clearBtn.onclick = () => setCellOption('clear', '');
+            opts.appendChild(clearBtn);
+
+            document.getElementById('cellEditorModal').classList.remove('hidden');
+        }
+
+        function closeCellEditor() {
+            document.getElementById('cellEditorModal').classList.add('hidden');
+            editSelectedCellData = null;
+        }
+
+        function setCellOption(type, code) {
+            if (!editSelectedCellData) return;
+            const { sid, day } = editSelectedCellData;
+
+            if (!editAttendanceData[sid]) editAttendanceData[sid] = {};
+
+            let present = false;
+            let note = '';
+
+            if (type === 'present') {
+                present = true;
+                note = '';
+            } else if (type === 'note') {
+                present = false;
+                note = code;
+            } else {
+                present = false;
+                note = '';
+            }
+
+            editAttendanceData[sid][day] = { present, note };
+
+            // Save to Firebase
+            const dayStr = String(day).padStart(2, '0');
+            const docId = `${editCurrentYear}-${editCurrentMonth}-${dayStr}_${editCurrentActivityId}`;
+            const update = {};
+            update[`records.${sid}.present`] = present;
+            update[`records.${sid}.note`] = note;
+            update[`records.${sid}.updatedAt`] = firebase.firestore.FieldValue.serverTimestamp();
+
+            db.collection('attendance').doc(docId).set(update, { merge: true })
+                .then(() => console.log(`Presensi ${sid} tgl ${day} tersimpan`))
+                .catch(err => console.error("Gagal menyimpan: ", err));
+
+            closeCellEditor();
+            renderEditTable();
         }
     </script>
 </body>
