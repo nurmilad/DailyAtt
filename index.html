@@ -10,6 +10,10 @@
     <style>
         body { font-family: 'Inter', sans-serif; }
         ::-webkit-scrollbar { width: 0px; background: transparent; }
+        .sortable { cursor: pointer; user-select: none; transition: background-color 0.15s; }
+        .sortable:hover { background-color: #e5e7eb; }
+        .sortable .sort-icon { opacity: 0.3; margin-left: 3px; font-size: 9px; }
+        .sortable.active-sort .sort-icon { opacity: 1; color: #2563eb; }
     </style>
 </head>
 <body class="bg-gray-50 h-screen flex flex-col overflow-hidden">
@@ -72,8 +76,12 @@
 
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
                 <div class="grid grid-cols-12 gap-1 bg-gray-100 p-2 text-xs font-semibold text-gray-600 border-b border-gray-200">
-                    <div class="col-span-2 text-center">NIS</div>
-                    <div class="col-span-4">Nama Murid</div>
+                    <div onclick="sortBy('nis')" id="th-nis" class="sortable col-span-2 text-center active-sort">
+                        NIS <i class="fas fa-sort sort-icon"></i>
+                    </div>
+                    <div onclick="sortBy('nama')" id="th-nama" class="sortable col-span-4">
+                        Nama Murid <i class="fas fa-sort sort-icon"></i>
+                    </div>
                     <div class="col-span-2 text-center">Presensi</div>
                     <div class="col-span-4 text-center">Ket.</div>
                 </div>
@@ -107,15 +115,71 @@
             else if (err.code == 'unimplemented') console.log("Browser tidak mendukung persistence.");
         });
 
-        // 2. Cek Status Login saat halaman dimuat
+        // 2. Variabel Global
+        const today = new Date().toLocaleDateString('en-CA'); 
+        let currentActivityId = null;
+        let studentsData = [];
+        let attendanceRecords = {};
+        let noteOptions = []; 
+
+        // ==========================================================
+        // FITUR SORTIR TERSIMPAN (Menggunakan localStorage)
+        // ==========================================================
+        // Baca preferensi sortir dari localStorage (jika ada)
+        let sortColumn = localStorage.getItem('attendace_sortColumn') || 'nis';   // Default: nis
+        let sortDirection = localStorage.getItem('attendace_sortDirection') || 'asc'; // Default: asc
+
+        function sortBy(column) {
+            if (sortColumn === column) {
+                // Jika kolom sama, balik arah sortir
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                // Jika kolom berbeda, ganti kolom, reset ke asc
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+            
+            // Simpan preferensi ke localStorage (agar tersimpan permanen)
+            localStorage.setItem('attendace_sortColumn', sortColumn);
+            localStorage.setItem('attendace_sortDirection', sortDirection);
+            
+            updateSortIcons();
+            renderStudentList();
+        }
+
+        function updateSortIcons() {
+            // Reset semua header
+            document.querySelectorAll('.sortable').forEach(th => {
+                th.classList.remove('active-sort');
+                const icon = th.querySelector('.sort-icon');
+                if (icon) icon.className = 'fas fa-sort sort-icon';
+            });
+            
+            // Set ikon pada kolom aktif
+            const activeTh = document.getElementById(`th-${sortColumn}`);
+            if (activeTh) {
+                activeTh.classList.add('active-sort');
+                const icon = activeTh.querySelector('.sort-icon');
+                if (icon) {
+                    icon.className = sortDirection === 'asc' 
+                        ? 'fas fa-sort-up sort-icon' 
+                        : 'fas fa-sort-down sort-icon';
+                }
+            }
+        }
+
+        // 3. Cek Status Login saat halaman dimuat
         window.onload = function() {
+            // Inisialisasi tampilan ikon sortir sesuai preferensi tersimpan
+            updateSortIcons();
+            
             // Jika sudah login di sesi browser ini, langsung tampilkan main view
             if (sessionStorage.getItem('isStudentLoggedIn') === 'true') {
                 showMainView();
             }
         };
 
-        // 3. Fungsi Login Santri (Membaca dari password/daily-att-stu)
+        // 4. Fungsi Login Santri
         function loginStudent() {
             const inputPass = document.getElementById('studentPassword').value;
             const errorMsg = document.getElementById('loginError');
@@ -126,10 +190,8 @@
                 return;
             }
 
-            // Mengambil dokumen spesifik: password -> daily-att-stu
             db.collection('password').doc('daily-att-stu').get().then(doc => {
                 if (doc.exists && doc.data().password === inputPass) {
-                    // Simpan status login di sessionStorage
                     sessionStorage.setItem('isStudentLoggedIn', 'true');
                     showMainView();
                 } else {
@@ -143,26 +205,18 @@
             });
         }
 
-        // 4. Tampilkan Halaman Utama & Mulai Ambil Data
+        // 5. Tampilkan Halaman Utama
         function showMainView() {
             document.getElementById('loginView').classList.add('hidden');
             document.getElementById('mainView').classList.remove('hidden');
             document.getElementById('mainView').classList.add('flex');
             
-            // Inisialisasi aplikasi (Ambil data Firebase)
+            document.getElementById('currentDate').innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
             initApp();
         }
 
-        // 5. Variabel Global Aplikasi
-        const today = new Date().toLocaleDateString('en-CA'); 
-        document.getElementById('currentDate').innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        
-        let currentActivityId = null;
-        let studentsData = [];
-        let attendanceRecords = {};
-        let noteOptions = []; 
-
-        // 6. Fungsi Inisialisasi (Dipanggil setelah login sukses)
+        // 6. Fungsi Inisialisasi
         function initApp() {
             // Ambil Data Kegiatan
             db.collection('activities').orderBy('name').onSnapshot(snapshot => {
@@ -179,7 +233,6 @@
             // Ambil Data Murid Aktif
             db.collection('students').where('status', '==', 'Aktif').onSnapshot(snapshot => {
                 studentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                studentsData.sort((a, b) => (a.nis || '').localeCompare(b.nis || ''));
                 renderStudentList();
             });
 
@@ -206,7 +259,7 @@
             });
         }
 
-        // 7. Render Tabel
+        // 7. Render Tabel (dengan Sortir)
         function renderStudentList() {
             const container = document.getElementById('studentList');
             
@@ -222,7 +275,23 @@
 
             container.innerHTML = '';
             
-            studentsData.forEach(student => {
+            // Lakukan sortir pada salinan array (agar data asli tidak berubah)
+            const sortedStudents = [...studentsData].sort((a, b) => {
+                const valA = (a[sortColumn] || '').toString().toLowerCase();
+                const valB = (b[sortColumn] || '').toString().toLowerCase();
+                
+                let comparison = 0;
+                if (sortColumn === 'nis') {
+                    // NIS mungkin berupa angka atau string; gunakan localeCompare numeric
+                    comparison = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+                } else {
+                    comparison = valA.localeCompare(valB);
+                }
+                
+                return sortDirection === 'asc' ? comparison : -comparison;
+            });
+            
+            sortedStudents.forEach(student => {
                 const record = attendanceRecords[student.id] || { present: false, note: '' };
                 
                 // LOGIKA KETERANGAN: Jika Hadir (Ceklis Aktif) = TERKUNCI. Jika Tidak Hadir = TERBUKA.
