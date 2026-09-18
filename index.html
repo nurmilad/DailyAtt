@@ -75,15 +75,16 @@
             </div>
 
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+                <!-- ✅ PERBAIKAN: Nama diperlebar jadi col-span-5, Ket jadi col-span-3 -->
                 <div class="grid grid-cols-12 gap-1 bg-gray-100 p-2 text-xs font-semibold text-gray-600 border-b border-gray-200">
                     <div onclick="sortBy('nis')" id="th-nis" class="sortable col-span-2 text-center active-sort">
                         NIS <i class="fas fa-sort sort-icon"></i>
                     </div>
-                    <div onclick="sortBy('nama')" id="th-nama" class="sortable col-span-4">
+                    <div onclick="sortBy('nama')" id="th-nama" class="sortable col-span-5">
                         Nama Murid <i class="fas fa-sort sort-icon"></i>
                     </div>
                     <div class="col-span-2 text-center">Presensi</div>
-                    <div class="col-span-4 text-center">Ket.</div>
+                    <div class="col-span-3 text-center">Ket.</div>
                 </div>
                 <div id="studentList" class="divide-y divide-gray-100">
                     <div class="p-4 text-center text-gray-500 text-sm">Memuat data...</div>
@@ -125,21 +126,17 @@
         // ==========================================================
         // FITUR SORTIR TERSIMPAN (Menggunakan localStorage)
         // ==========================================================
-        // Baca preferensi sortir dari localStorage (jika ada)
-        let sortColumn = localStorage.getItem('attendace_sortColumn') || 'nis';   // Default: nis
-        let sortDirection = localStorage.getItem('attendace_sortDirection') || 'asc'; // Default: asc
+        let sortColumn = localStorage.getItem('attendace_sortColumn') || 'nis';
+        let sortDirection = localStorage.getItem('attendace_sortDirection') || 'asc';
 
         function sortBy(column) {
             if (sortColumn === column) {
-                // Jika kolom sama, balik arah sortir
                 sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
             } else {
-                // Jika kolom berbeda, ganti kolom, reset ke asc
                 sortColumn = column;
                 sortDirection = 'asc';
             }
             
-            // Simpan preferensi ke localStorage (agar tersimpan permanen)
             localStorage.setItem('attendace_sortColumn', sortColumn);
             localStorage.setItem('attendace_sortDirection', sortDirection);
             
@@ -148,14 +145,12 @@
         }
 
         function updateSortIcons() {
-            // Reset semua header
             document.querySelectorAll('.sortable').forEach(th => {
                 th.classList.remove('active-sort');
                 const icon = th.querySelector('.sort-icon');
                 if (icon) icon.className = 'fas fa-sort sort-icon';
             });
             
-            // Set ikon pada kolom aktif
             const activeTh = document.getElementById(`th-${sortColumn}`);
             if (activeTh) {
                 activeTh.classList.add('active-sort');
@@ -170,10 +165,8 @@
 
         // 3. Cek Status Login saat halaman dimuat
         window.onload = function() {
-            // Inisialisasi tampilan ikon sortir sesuai preferensi tersimpan
             updateSortIcons();
             
-            // Jika sudah login di sesi browser ini, langsung tampilkan main view
             if (sessionStorage.getItem('isStudentLoggedIn') === 'true') {
                 showMainView();
             }
@@ -236,7 +229,7 @@
                 renderStudentList();
             });
 
-            // Ambil Data Keterangan dari settings/notes/list
+            // Ambil Data Keterangan
             db.collection('settings').doc('notes').onSnapshot(doc => {
                 if (doc.exists && doc.data().list) {
                     noteOptions = doc.data().list;
@@ -275,14 +268,12 @@
 
             container.innerHTML = '';
             
-            // Lakukan sortir pada salinan array (agar data asli tidak berubah)
             const sortedStudents = [...studentsData].sort((a, b) => {
                 const valA = (a[sortColumn] || '').toString().toLowerCase();
                 const valB = (b[sortColumn] || '').toString().toLowerCase();
                 
                 let comparison = 0;
                 if (sortColumn === 'nis') {
-                    // NIS mungkin berupa angka atau string; gunakan localeCompare numeric
                     comparison = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
                 } else {
                     comparison = valA.localeCompare(valB);
@@ -293,11 +284,8 @@
             
             sortedStudents.forEach(student => {
                 const record = attendanceRecords[student.id] || { present: false, note: '' };
-                
-                // LOGIKA KETERANGAN: Jika Hadir (Ceklis Aktif) = TERKUNCI. Jika Tidak Hadir = TERBUKA.
                 const isKetDisabled = record.present; 
 
-                // Membuat opsi dropdown secara dinamis dari data Firebase
                 let optionsHtml = '<option value="">-</option>';
                 noteOptions.forEach(opt => {
                     optionsHtml += `<option value="${opt}" ${record.note === opt ? 'selected' : ''}>${opt}</option>`;
@@ -306,16 +294,17 @@
                 const row = document.createElement('div');
                 row.className = 'grid grid-cols-12 gap-1 p-2 items-center hover:bg-gray-50 transition-colors';
                 
+                // ✅ PERBAIKAN: Nama col-span-5, Ket col-span-3
                 row.innerHTML = `
                     <div class="col-span-2 text-center text-xs font-semibold text-gray-500">${student.nis || '-'}</div>
-                    <div class="col-span-4 text-sm font-medium text-gray-800 truncate pr-1">${student.nama}</div>
+                    <div class="col-span-5 text-sm font-medium text-gray-800 leading-tight" style="word-wrap:break-word; white-space:normal;">${student.nama}</div>
                     <div class="col-span-2 flex justify-center">
                         <input type="checkbox" 
                             class="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
                             ${record.present ? 'checked' : ''}
                             onchange="togglePresence('${student.id}', this.checked)">
                     </div>
-                    <div class="col-span-4 flex justify-center">
+                    <div class="col-span-3 flex justify-center">
                         <select class="w-full text-xs border border-gray-300 rounded p-1 focus:outline-none focus:border-blue-500 ${isKetDisabled ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-700'}"
                             ${isKetDisabled ? 'disabled' : ''}
                             onchange="updateNote('${student.id}', this.value)">
